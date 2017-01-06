@@ -13,6 +13,28 @@ class LinkTypes(Enum):
     AIR = "air"
 
 
+class CircularQueue(object):
+    """A queue that wraps around once the last item is reached"""
+
+    def __init__(self, items):
+        self.items = items
+        self.current_index = 0
+
+    def next(self):
+        """Return the item at the current position in the queue and advance the
+        pointer to the next position"""
+        item = self.items[self.current_index]
+        self.current_index = (self.current_index + 1) % len(self.items)
+        return item
+
+    def previous(self):
+        """Return the item at the current position in the queue and advance the
+        pointer to the previous position"""
+        item = self.items[self.current_index]
+        self.current_index = (self.current_index - 1) % len(self.items)
+        return item
+
+
 class CardDeck(object):
     """An object to represent a deck of cards"""
 
@@ -67,21 +89,24 @@ class Game(object):
             p = Player(name, cities, cities[0])
             self.players.append(p)
 
+        self.player_queue = CircularQueue(self.players)
         self.current_player = None
         self.next_player()
 
     def next_player(self):
         """Advance the current_player counter"""
-        if self.current_player is None:
-            self.current_player = 0
-        else:
-            print("End of {}'s turn".format(self.players[self.current_player].name))
-            self.current_player = (self.current_player + 1) % len(self.players)
+        if self.current_player is not None:
+            print("End of {}'s turn".format(self.current_player.name))
 
-        self.current_turn = Turn(self.players[self.current_player].current_city)
+        self.current_player = self.player_queue.next()
+        self.current_turn = Turn(self.current_player.current_city)
 
     def roll_dice(self):
         self.current_turn.roll_dice()
+
+        # Give the player another go if they rolled a 6
+        if self.current_turn.dice_points == 6:
+            self.player_queue.previous()
 
     def get_links(self, player_id):
         """Return a list of links that the player with the specified ID can
@@ -131,7 +156,8 @@ class Game(object):
 
         # If the player cannot move anywhere then end the turn here
         if not available_links:
-            self.next_player()
+            pass
+            # self.next_player()
 
         return available_links
 
@@ -139,7 +165,8 @@ class Game(object):
         """Make the specified player travel along the link provided"""
 
         # Check this move is valid
-        if player_id != self.current_player:
+        current_player_index = self.players.index(self.current_player)
+        if player_id != current_player_index:
             raise InvalidMoveException("It is not that player's turn")
 
         if link not in self.get_links(player_id):
@@ -207,7 +234,7 @@ if __name__ == "__main__":
     with open("map.json") as map_file:
         soton_map = json.load(map_file)
 
-    players = ["John"]
+    players = ["John", "Yoko"]
     game = Game(soton_map, players)
 
     for i, name in enumerate(players):
@@ -217,7 +244,7 @@ if __name__ == "__main__":
     print("")
 
     while True:
-        p = game.players[game.current_player]
+        p = game.current_player
         print("It's {}'s turn".format(p.name))
         print("You are at {}".format(game.get_city_name(p.current_city)))
 
@@ -226,10 +253,11 @@ if __name__ == "__main__":
         if dice_rolled:
             print("You have {} points remaining".format(game.current_turn.dice_points))
 
-        links = game.get_links(game.current_player)
+        current_player_idx = game.players.index(game.current_player)
+        links = game.get_links(current_player_idx)
         link_descs = []
         for link in links:
-            if link["cities"][0] == game.players[game.current_player].current_city:
+            if link["cities"][0] == game.current_player.current_city:
                 city = link["cities"][1]
             else:
                 city = link["cities"][0]
@@ -252,4 +280,4 @@ if __name__ == "__main__":
             print("You rolled a {}".format(game.current_turn.dice_points))
             continue
 
-        game.travel_to(game.current_player, links[choice - 1], p.current_city)
+        game.travel_to(current_player_idx, links[choice - 1], p.current_city)
