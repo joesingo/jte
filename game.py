@@ -6,6 +6,10 @@ from enum import Enum
 class InvalidMoveException(Exception):
     """The specifed move was not valid"""
 
+class InvalidActionException(Exception):
+    """The specifed action was not valid"""
+
+
 class LinkTypes(Enum):
     """An enum to store the availble types of link between cities"""
     LAND = "land"
@@ -68,6 +72,7 @@ class Turn(object):
 
     def roll_dice(self):
         self.dice_points = random.randint(1, 6)
+        print("{} was rolled".format(self.dice_points))
 
 
 class Game(object):
@@ -76,8 +81,14 @@ class Game(object):
     # The number of cards each player is dealt at the start of the game
     STARTING_CITIES = 3
 
+    # Constants to represent the actions players are allowed to perform
+    ROLL_DICE_ACTION = 1
+    TRAVEL_ACTION = 2
+    WAIT_AT_PORT_ACTION = 3
+
     def __init__(self, game_map, player_names):
         """Create players and deal cards"""
+        self.in_progress = True
         self.game_map = game_map
         self.players = []
 
@@ -91,6 +102,7 @@ class Game(object):
 
         self.player_queue = CircularQueue(self.players)
         self.current_player = None
+        self.available_actions = None
         self.next_player()
 
     def next_player(self):
@@ -101,6 +113,62 @@ class Game(object):
         self.current_player = self.player_queue.next()
         self.current_turn = Turn(self.current_player.current_city)
 
+        self.available_actions = self.get_available_actions()
+
+    def get_available_actions(self):
+        """Calculate and return the actions the current player is able to
+        perform. Each action is a dictionary of the form:
+            {"id": <integer ID>,
+             "type": <one of the constants at the top of this class>
+             ""}
+        """
+        actions = []
+
+        if self.current_turn.dice_points is None:
+            actions.append({"type": Game.ROLL_DICE_ACTION})
+
+        at_port = False
+
+        for link in self.get_links():
+            actions.append({
+                "type": Game.TRAVEL_ACTION, "link": link
+            })
+
+            if link["type"] == LinkTypes.SEA.value:
+                at_port = True
+
+        if at_port and self.current_turn.dice_points is not None:
+            actions.append({"type": Game.WAIT_AT_PORT_ACTION})
+
+        # Add IDs to each action
+        for i, action in enumerate(actions):
+            action["id"] = i
+
+        return actions
+
+    def perform_action(self, action_id):
+        """Perform an action for the current player"""
+        action = None
+        for i in self.available_actions:
+            if i["id"] == action_id:
+                action = i
+                break
+
+        if action is None:
+            raise InvalidActionException("No action with that ID was found")
+
+        if action["type"] == Game.ROLL_DICE_ACTION:
+            self.roll_dice()
+
+        elif action["type"] == Game.TRAVEL_ACTION:
+            self.travel_to(action["link"])
+
+        elif action["type"] == Game.WAIT_AT_PORT_ACTION:
+            self.next_player()
+
+        # Recalculate available actions
+        self.available_actions = self.get_available_actions()
+
     def roll_dice(self):
         self.current_turn.roll_dice()
 
@@ -108,14 +176,14 @@ class Game(object):
         if self.current_turn.dice_points == 6:
             self.player_queue.previous()
 
-    def get_links(self, player_id):
-        """Return a list of links that the player with the specified ID can
-        travel along. Each link is a dictionary of the form:
-        {"cities": [<city 1 ID>, <city2 ID>],
-         "type": <link type>,
-         "cost": <link cost if type is "air">}
+    def get_links(self):
+        """Return a list of links that the current player can travel along.
+        Each link is a dictionary of the form:
+            {"city": <destination city ID>,
+            "type": <link type>,
+            "cost": <link cost if type is "air">}
         """
-        player = self.players[player_id]
+        player = self.current_player
         available_links = []
 
         for link in self.game_map["links"]:
@@ -151,6 +219,8 @@ class Game(object):
                 if to_city in self.current_turn.cities:
                     continue
 
+                link["to_city"] = to_city
+
                 # If reached here then the link must be okay
                 available_links.append(link)
 
@@ -161,34 +231,19 @@ class Game(object):
 
         return available_links
 
-    def travel_to(self, player_id, link, from_city, wait_at_port=False):
-        """Make the specified player travel along the link provided"""
+    def travel_to(self, link):
+        """Move the current player along the link provided"""
 
         # Check this move is valid
-        current_player_index = self.players.index(self.current_player)
-        if player_id != current_player_index:
-            raise InvalidMoveException("It is not that player's turn")
-
-        if link not in self.get_links(player_id):
+        if link not in self.get_links():
             raise InvalidMoveException("That is not a valid move")
 
-        if from_city not in link["cities"]:
-            raise InvalidMoveException("The from city is not part of the link "
-                                       "provided")
+        self.current_player.current_city = link["to_city"]
+        self.current_turn.cities.append(link["to_city"])
 
-        # Work out the to_city
-        if link["cities"][0] == from_city:
-            to_city = link["cities"][1]
-        else:
-            to_city = link["cities"][0]
-
-        player = self.players[player_id]
-        player.current_city = to_city
-        self.current_turn.cities.append(to_city)
-
-        if to_city in player.cities:
+        if link["to_city"] in self.current_player.cities:
             print("Got a city")
-            player.cities_visited.append(to_city)
+            self.current_player.cities_visited.append(link["to_city"])
 
         self.win_check()
 
@@ -202,11 +257,9 @@ class Game(object):
         elif link["type"] == LinkTypes.SEA.value:
             self.next_player()
 
-        # End turn now if all dice points are used up or if choosing to wait at
-        # a port
-        if self.current_turn.dice_points == 0 or wait_at_port:
+        # End turn now if all dice points are used up
+        if self.current_turn.dice_points == 0:
             self.next_player()
-
 
     def get_city_name(self, city_id):
         return self.game_map["cities"][city_id]["name"]
@@ -220,6 +273,7 @@ class Game(object):
                 print(set(player.cities) - set(player.cities_visited))
 
     def end_game(self, winner):
+        self.in_progress = False
         print("{} has won!".format(winner.name))
         sys.exit(0)
 
@@ -248,36 +302,20 @@ if __name__ == "__main__":
         print("It's {}'s turn".format(p.name))
         print("You are at {}".format(game.get_city_name(p.current_city)))
 
-        dice_rolled = game.current_turn.dice_points is not None
+        print("Available actions are:")
+        for action in game.available_actions:
+            if action["type"] == Game.ROLL_DICE_ACTION:
+                desc = "Roll dice"
 
-        if dice_rolled:
-            print("You have {} points remaining".format(game.current_turn.dice_points))
+            elif action["type"] == Game.TRAVEL_ACTION:
+                city = game.get_city_name(action["link"]["to_city"])
+                desc = "Travel to {} by {}".format(city, action["link"]["type"])
 
-        current_player_idx = game.players.index(game.current_player)
-        links = game.get_links(current_player_idx)
-        link_descs = []
-        for link in links:
-            if link["cities"][0] == game.current_player.current_city:
-                city = link["cities"][1]
-            else:
-                city = link["cities"][0]
-            link_descs.append("{} via {}".format(game.get_city_name(city), link["type"]))
+            elif action["type"] == Game.WAIT_AT_PORT_ACTION:
+                desc = "Wait at port"
 
-        options = link_descs
-        start_at = 1
-
-        if not dice_rolled:
-            options.insert(0, "Roll dice")
-            start_at = 0
-
-        show_options(options, start_at)
+            print("{}. {}".format(action["id"], desc))
 
         choice = int(input())
 
-        if choice == 0:
-            game.roll_dice()
-            dice_rolled = True
-            print("You rolled a {}".format(game.current_turn.dice_points))
-            continue
-
-        game.travel_to(current_player_idx, links[choice - 1], p.current_city)
+        game.perform_action(choice)
