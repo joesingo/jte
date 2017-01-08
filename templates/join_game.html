@@ -43,14 +43,15 @@
         $.ajax(url, {
             "method": "GET",
             "error": function(request, status, error) {
-                alert("Unexpected error retrieving status");
+                throw "Unexpected error retrieving status";
             },
             "success": function(response, status, request) {
                 status = JSON.parse(response);
 
                 // Redirect to play page if we are ready to play
                 if (status.ready) {
-                    window.location.href = "play-the-game";
+                    var url = window.location.pathname.replace("join", "play");
+                    window.location.href = url;
                 }
 
                 // Show how many players have joined

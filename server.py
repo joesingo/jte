@@ -1,3 +1,4 @@
+import os
 import random
 import json
 
@@ -7,8 +8,7 @@ from matchmaking import Matchmaker, InvalidNameException, GameFullException
 
 
 app = Flask(__name__)
-app.secret_key = ("\x04\xbb5vU\xa1,\xc9\xa3\xa0\x1d\x86\xf7]=}\xe8\xa1\xba\x1b"
-                  "\x18\x9c\x92n")
+app.secret_key = os.urandom(24)
 
 MAX_GAME_ID = 100
 matchmakers = {}
@@ -83,6 +83,62 @@ def join_game_status(game_id):
     check_game_exists(game_id)
     status = matchmakers[game_id].get_status()
     return json.dumps(status)
+
+
+def get_username(game_id):
+    """Get the username of the user for the specified game from the session
+    object"""
+    game_id = str(game_id)
+
+    if game_id not in session:
+        abort(403)
+
+    return session[game_id]
+
+
+def get_game(game_id):
+    """Return the Game object for the specifed game"""
+    check_game_exists(game_id)
+
+    status = matchmakers[game_id].get_status()
+    if not status["ready"]:
+        abort(403)
+
+    return matchmakers[game_id].game
+
+
+@app.route("/play/<int:game_id>/")
+def play_game(game_id):
+    """Render the page to actually play the game"""
+    game = get_game(game_id)
+    username = get_username(game_id)
+
+    return render_template("game.html", username=username,
+                           cities=json.dumps(game.game_map["cities"]))
+
+
+@app.route("/play/<int:game_id>/status/")
+def get_game_status(game_id):
+    """Return the game status as JSON"""
+    game = get_game(game_id)
+    username = get_username(game_id)
+    return json.dumps(game.get_status(username))
+
+
+@app.route("/play/<int:game_id>/action/", methods=["POST"])
+def perform_action(game_id):
+    """Perform an action in the specified game"""
+    game = get_game(game_id)
+    username = get_username(game_id)
+
+    try:
+        action_id = request.form["action_id"]
+    except KeyError:
+        abort(400)
+
+    game.perform_action(action_id, username)
+    return "Success", 200
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)

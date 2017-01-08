@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Journey Through Southampton</title>
+    <style type="text/css">
+
+    </style>
+</head>
+
+<body>
+    <script type="text/json" id="cities">
+    {{ cities }}
+    </script>
+
+    <h1>Journey Through Southampton</h1>
+
+    <p>Hello {{ username }}!</p>
+
+    <div id="status-div"></div>
+
+    <script type="text/javascript" src="/static/jquery-3.1.1.min.js"></script>
+    <script type="text/javascript">
+
+    const UPDATE_INTERVAL = 1000;
+
+    var map_str = document.getElementById("cities").innerHTML;
+    map_str = map_str.replace(/&#34;/g, '"');
+    var map = JSON.parse(map_str);
+
+    var status_url = window.location.pathname + "status/";
+    var action_url = window.location.pathname + "action/";
+
+    function update() {
+        $.ajax(status_url, {
+            "method": "GET",
+            "error": function(request, status, error) {
+                throw "Unexpected error retrieving status";
+            },
+            "success": function(response, status, request) {
+                $("#status-div").text(response);
+            }
+        })
+    }
+
+    update();
+    window.setInterval(update, UPDATE_INTERVAL);
+
+    </script>
+</body>
+
+</html>
