@@ -1,5 +1,6 @@
 from jte import Game
 
+
 class InvalidNameException(Exception):
     """There is a problem with the username provided by the user"""
 
@@ -25,7 +26,8 @@ class Matchmaker(object):
             raise GameFullException("That game is full")
 
         if name in self.player_names:
-            raise InvalidNameException("There is already a player with that name")
+            raise InvalidNameException("There is already a player with that "
+                                       "name")
 
         self.player_names.append(name)
 

@@ -5,8 +5,10 @@ from flask import Flask, render_template, request, redirect, abort, session
 
 from matchmaking import Matchmaker, InvalidNameException, GameFullException
 
+
 app = Flask(__name__)
-app.secret_key = "\x04\xbb5vU\xa1,\xc9\xa3\xa0\x1d\x86\xf7]=}\xe8\xa1\xba\x1b\x18\x9c\x92n"
+app.secret_key = ("\x04\xbb5vU\xa1,\xc9\xa3\xa0\x1d\x86\xf7]=}\xe8\xa1\xba\x1b"
+                  "\x18\x9c\x92n")
 
 MAX_GAME_ID = 100
 matchmakers = {}
@@ -14,15 +16,18 @@ matchmakers = {}
 with open("map.json") as map_file:
     soton_map = json.load(map_file)
 
+
 def check_game_exists(game_id):
     """Check if a game with the specifed ID exists"""
     if game_id not in matchmakers:
         abort(404)
 
+
 @app.route("/create/")
 def create_game():
     """Render the static page for a user to create a new game"""
     return render_template("create_game.html")
+
 
 @app.route("/create/", methods=["POST"])
 def create_game_post():
@@ -42,11 +47,13 @@ def create_game_post():
     matchmakers[game_id] = Matchmaker(players, soton_map)
     return redirect("/join/{}/".format(game_id))
 
+
 @app.route("/join/<int:game_id>/")
 def join_game(game_id):
     """Render the page for a user to join a game"""
     check_game_exists(game_id)
     return render_template("join_game.html")
+
 
 @app.route("/join/<int:game_id>/", methods=["POST"])
 def joing_game_post(game_id):
@@ -68,6 +75,7 @@ def joing_game_post(game_id):
     session[game_id] = name
 
     return "", 200
+
 
 @app.route("/join/<int:game_id>/status/")
 def join_game_status(game_id):

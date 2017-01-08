@@ -3,6 +3,7 @@ import json
 import random
 from enum import Enum
 
+
 class AuthenticationException(Exception):
     """There was a problem with authenticating the user"""
 
@@ -156,7 +157,8 @@ class Game(object):
         """Perform an action as the player with the username provided"""
 
         if username != self.current_player.name:
-            raise AuthenticationException("It is not {}'s turn".format(player.name))
+            msg = "It is not {}'s turn".format(player.name)
+            raise AuthenticationException(msg)
 
         action = None
         for i in self.available_actions:
@@ -207,21 +209,22 @@ class Game(object):
 
                 # Skip if dice has not been rolled and this is not a sea link
                 if (self.current_turn.dice_points is None and
-                    link["type"] != LinkTypes.SEA.value):
+                        link["type"] != LinkTypes.SEA.value):
                     continue
 
                 # Skip if dice has been rolled and this is a sea link
                 if (self.current_turn.dice_points is not None and
-                    link["type"] == LinkTypes.SEA.value):
+                        link["type"] == LinkTypes.SEA.value):
                     continue
 
                 # Skip if already flown this turn and this is an air link
-                if self.current_turn.flown and link["type"] == LinkTypes.AIR.value:
+                if (link["type"] == LinkTypes.AIR.value and
+                        self.current_turn.flown):
                     continue
 
                 # Skip if not enough dice points are remaining
                 if ("cost" in link and
-                    link["cost"] > self.current_turn.dice_points):
+                        link["cost"] > self.current_turn.dice_points):
                     continue
 
                 # Work out the 'to' city - the city in the link that is not the
@@ -302,9 +305,10 @@ class Game(object):
         }
 
         for p in self.players:
+            progress_str = "{}/{}".format(len(p.cities_visited), len(p.cities))
             status["players"][p.name] = {
                 "name": p.name,
-                "progress": "{}/{}".format(len(p.cities_visited), len(p.cities)),
+                "progress": progress_str,
                 "current_city": p.current_city
             }
 
@@ -326,10 +330,11 @@ if __name__ == "__main__":
     print("")
 
     while True:
-        username=game.current_player.name
+        username = game.current_player.name
         s = game.get_status(username)
 
-        city = game.get_city_name(s["players"][s["current_player"]]["current_city"])
+        city_id = s["players"][s["current_player"]]["current_city"]
+        city = game.get_city_name(city_id)
         message = "{}'s turn: {}".format(s["current_player"], city)
 
         if s["dice_points"]:
@@ -344,7 +349,8 @@ if __name__ == "__main__":
 
             elif action["type"] == Game.TRAVEL_ACTION:
                 city = game.get_city_name(action["link"]["to_city"])
-                desc = "Travel to {} by {}".format(city, action["link"]["type"])
+                desc = "Travel to {} by {}".format(city,
+                                                   action["link"]["type"])
 
             elif action["type"] == Game.WAIT_AT_PORT_ACTION:
                 desc = "Wait at port"
