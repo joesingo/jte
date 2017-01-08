@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Join game</title>
+    <style type="text/css">
+
+    .error {
+        color: red;
+    }
+
+    </style>
+</head>
+
+<body>
+    <h1>Join</h1>
+
+    <form id="join-form">
+        <p id="form-error-p" class="error"></p>
+        <input type="text" name="username" placeholder="Your name" />
+        <button>Join</button>
+    </form>
+
+    <div id="status-area">
+        Players joined:
+        <ol id="players-joined-list"></ol>
+
+        Waiting for <b><span id="players-remaining-span">?</span></b> more player(s)
+        to join
+    </div>
+
+    <script type="text/javascript" src="/static/jquery-3.1.1.min.js"></script>
+    <script type="text/javascript">
+
+    $("#status-area").hide();
+
+    /*
+     * Check the status of the matchmaking process, update the display, and
+     * redirect to the play page if the game is ready
+     */
+    function checkStatus() {
+        var url = window.location.href + "status/";
+        $.ajax(url, {
+            "method": "GET",
+            "error": function(request, status, error) {
+                alert("Unexpected error retrieving status");
+            },
+            "success": function(response, status, request) {
+                status = JSON.parse(response);
+
+                // Redirect to play page if we are ready to play
+                if (status.ready) {
+                    window.location.href = "play-the-game";
+                }
+
+                // Show how many players have joined
+                var player_list = $("#players-joined-list");
+                player_list.html("");
+
+                for (var i=0; i<status.player_names.length; i++) {
+                    player_list.append("<li>" + status.player_names[i] + "</li>");
+                }
+
+                var remaining = status.max_players - status.player_names.length;
+                $("#players-remaining-span").text(remaining);
+
+            }
+        });
+    }
+
+    /*
+     * Hide the join form and start the loop for checking the status of the
+     * matchmaking process
+     */
+    function startStatusLoop() {
+        $("#join-form").hide();
+        $("#status-area").show();
+
+        checkStatus();
+        window.setInterval(checkStatus, 1000);
+    }
+
+    $("#join-form").on("submit", function() {
+        var url = window.location.href;
+        $.ajax(url, {
+            "method": "POST",
+            "data": {
+                "username": this.username.value
+            },
+            "error": function(request, status, error) {
+                $("#form-error-p").text(request.responseText);
+            },
+            "success": function(response, status, request) {
+                startStatusLoop();
+            }
+        });
+        return false;
+    })
+
+    </script>
+</body>
+
+</html>
