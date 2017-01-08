@@ -59,9 +59,8 @@ class CardDeck(object):
 class Player(object):
     """A player in the game"""
 
-    def __init__(self, name, password, starting_cities, home_city):
+    def __init__(self, name, starting_cities, home_city):
         self.name = name
-        self.password = password
         self.cities = starting_cities
         self.home_city = home_city
         self.cities_visited = []
@@ -80,18 +79,6 @@ class Turn(object):
     def roll_dice(self):
         self.dice_roll = random.randint(1, 6)
         self.dice_points = self.dice_roll
-
-
-def authenticate(func):
-    """Decorator for providing authentication for methods in the Game class"""
-    def inner(game, *args, **kwargs):
-        kwargs["player"] = game.get_player(kwargs["username"], kwargs["password"])
-        del kwargs["username"]
-        del kwargs["password"]
-
-        return func(game, *args, **kwargs)
-
-    return inner
 
 
 class Game(object):
@@ -116,21 +103,13 @@ class Game(object):
 
         for name in player_names:
             cities = [deck.deal() for i in range(Game.STARTING_CITIES)]
-            p = Player(name, "pass", cities, cities[0])
+            p = Player(username, cities, cities[0])
             self.players.append(p)
 
         self.player_queue = CircularQueue(self.players)
         self.current_player = None
         self.available_actions = None
         self.next_player()
-
-    def get_player(self, username, password):
-        """Validate the users's credentials and return the Player object"""
-        for player in self.players:
-            if player.name == username and player.password == password:
-                return player
-
-        raise AuthenticationException("Username/password incorrect")
 
     def next_player(self):
         """Advance the current_player counter"""
@@ -173,11 +152,10 @@ class Game(object):
 
         return actions
 
-    @authenticate
-    def perform_action(self, action_id, player=None):
-        """Perform an action for the current player"""
+    def perform_action(self, action_id, username):
+        """Perform an action as the player with the username provided"""
 
-        if player != self.current_player:
+        if username != self.current_player.name:
             raise AuthenticationException("It is not {}'s turn".format(player.name))
 
         action = None
@@ -310,10 +288,10 @@ class Game(object):
         print("{} has won!".format(winner.name))
         sys.exit(0)
 
-    @authenticate
-    def get_status(self, player=None):
+    def get_status(self, username):
         """Return a dictionary containing all information a client will need to
-        provide and interface for the game
+        provide and interface for the game. username is the name of the user
+        retreiving the status
         """
         status = {
             "in_progress": self.in_progress,
@@ -332,10 +310,6 @@ class Game(object):
 
         return status
 
-def show_options(options, start_at=1):
-    print("Your options are:")
-    for i, option in enumerate(options):
-        print("{}. {}".format(i + start_at, option))
 
 if __name__ == "__main__":
 
@@ -353,8 +327,7 @@ if __name__ == "__main__":
 
     while True:
         username=game.current_player.name
-        password="pass"
-        s = game.get_status(username=username, password=password)
+        s = game.get_status(username)
 
         city = game.get_city_name(s["players"][s["current_player"]]["current_city"])
         message = "{}'s turn: {}".format(s["current_player"], city)
@@ -379,4 +352,4 @@ if __name__ == "__main__":
             print("{}. {}".format(action["id"], desc))
 
         choice = int(input())
-        game.perform_action(choice, username=username, password=password)
+        game.perform_action(choice, username)
