@@ -103,7 +103,7 @@ class Game(object):
 
         for name in player_names:
             cities = [deck.deal() for i in range(Game.STARTING_CITIES)]
-            p = Player(username, cities, cities[0])
+            p = Player(name, cities, cities[0])
             self.players.append(p)
 
         self.player_queue = CircularQueue(self.players)
