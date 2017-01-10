@@ -66,6 +66,8 @@ def joing_game_post(game_id):
     except KeyError:
         abort(400)
 
+    name = name[0].upper() + name[1:].lower()
+
     try:
         matchmakers[game_id].add_player(name)
 
@@ -132,8 +134,8 @@ def perform_action(game_id):
     username = get_username(game_id)
 
     try:
-        action_id = request.form["action_id"]
-    except KeyError:
+        action_id = int(request.form["action_id"])
+    except KeyError, ValueError:
         abort(400)
 
     game.perform_action(action_id, username)

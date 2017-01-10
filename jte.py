@@ -89,9 +89,9 @@ class Game(object):
     STARTING_CITIES = 3
 
     # Constants to represent the actions players are allowed to perform
-    ROLL_DICE_ACTION = 1
-    TRAVEL_ACTION = 2
-    WAIT_AT_PORT_ACTION = 3
+    ROLL_DICE_ACTION = "roll_dice"
+    TRAVEL_ACTION = "travel"
+    WAIT_AT_PORT_ACTION = "wait_at_port"
 
     def __init__(self, game_map, player_names):
         """Create players and deal cards"""
@@ -197,7 +197,7 @@ class Game(object):
     def get_links(self):
         """Return a list of links that the current player can travel along.
         Each link is a dictionary of the form:
-            {"city": <destination city ID>,
+            {"to_city": <destination city ID>,
             "type": <link type>,
             "cost": <link cost if type is "air">}
         """
@@ -301,16 +301,30 @@ class Game(object):
             "current_player": self.current_player.name,
             "dice_roll": self.current_turn.dice_roll,
             "dice_points": self.current_turn.dice_points,
-            "players": {}
+            "players": {},
+            "cards": []
         }
+
+        this_player = None
 
         for p in self.players:
             progress_str = "{}/{}".format(len(p.cities_visited), len(p.cities))
             status["players"][p.name] = {
-                "name": p.name,
                 "progress": progress_str,
                 "current_city": p.current_city
             }
+
+            if p.name == username:
+                this_player = p
+
+        for city in this_player.cities:
+            status["cards"].append({
+                "id": city,
+                "visited": (city in this_player.cities_visited)
+            })
+
+        if self.current_player.name == username:
+            status["actions"] = self.available_actions
 
         return status
 

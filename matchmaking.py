@@ -25,6 +25,9 @@ class Matchmaker(object):
         if self.game is not None:
             raise GameFullException("That game is full")
 
+        if not name:
+            raise InvalidNameException("Name cannot be empty")
+
         if name in self.player_names:
             raise InvalidNameException("There is already a player with that "
                                        "name")
