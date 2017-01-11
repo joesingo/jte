@@ -1,6 +1,8 @@
 import sys
 import json
 import random
+import time
+import copy
 from enum import Enum
 
 
@@ -110,7 +112,9 @@ class Game(object):
         self.player_queue = CircularQueue(self.players)
         self.current_player = None
         self.available_actions = None
+        self.status = None
         self.next_player()
+        self.update_status()
 
     def next_player(self):
         """Advance the current_player counter"""
@@ -186,6 +190,8 @@ class Game(object):
             print("{} got stuck!".format(self.current_player.name))
             self.next_player()
             self.available_actions = self.get_available_actions()
+
+        self.update_status()
 
     def roll_dice(self):
         self.current_turn.roll_dice()
@@ -292,41 +298,55 @@ class Game(object):
         sys.exit(0)
 
     def get_status(self, username):
-        """Return a dictionary containing all information a client will need to
-        provide and interface for the game. username is the name of the user
-        retreiving the status
+        """Return the status as set in update_status(). username is the name of the user
+        retreiving the status"""
+
+        # Copy the status so some things can be removed
+        status = copy.deepcopy(self.status)
+
+        # Don't show other players's cards to this player
+        for p in status["players"]:
+            if p["name"] != username:
+                del p["cards"]
+
+        # Only show actions if it is that player's turn
+        if username != self.current_player.name:
+            del status["actions"]
+
+        return status
+
+
+    def update_status(self):
+        """Set the current status to a  dictionary containing all information a
+        client will need to provide and interface for the game.
         """
-        status = {
+        self.status = {
             "in_progress": self.in_progress,
             "current_player": self.current_player.name,
             "dice_roll": self.current_turn.dice_roll,
             "dice_points": self.current_turn.dice_points,
-            "players": {},
-            "cards": []
+            "players": [],
+            "actions": self.available_actions
         }
-
-        this_player = None
 
         for p in self.players:
             progress_str = "{}/{}".format(len(p.cities_visited), len(p.cities))
-            status["players"][p.name] = {
+            player_status = {
+                "name": p.name,
                 "progress": progress_str,
-                "current_city": p.current_city
+                "current_city": p.current_city,
+                "cards": []
             }
 
-            if p.name == username:
-                this_player = p
+            for city in p.cities:
+                player_status["cards"].append({
+                    "id": city,
+                    "visited": (city in p.cities_visited)
+                })
 
-        for city in this_player.cities:
-            status["cards"].append({
-                "id": city,
-                "visited": (city in this_player.cities_visited)
-            })
+            self.status["players"].append(player_status)
 
-        if self.current_player.name == username:
-            status["actions"] = self.available_actions
-
-        return status
+        self.status["timestamp"] = time.time()
 
 
 if __name__ == "__main__":
@@ -347,7 +367,11 @@ if __name__ == "__main__":
         username = game.current_player.name
         s = game.get_status(username)
 
-        city_id = s["players"][s["current_player"]]["current_city"]
+        for i, p in enumerate(s["players"]):
+            if p["name"] == s["current_player"]:
+                break
+
+        city_id = s["players"][i]["current_city"]
         city = game.get_city_name(city_id)
         message = "{}'s turn: {}".format(s["current_player"], city)
 
