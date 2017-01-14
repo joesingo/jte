@@ -1,17 +1,17 @@
 {
     "cities": [
-        {"name": "Itchen"},
-        {"name": "Woolston"},
-        {"name": "Weston"},
-        {"name": "Sholing"},
-        {"name": "Thornhill"},
-        {"name": "Bitterne"},
-        {"name": "Bitterne Park"},
-        {"name": "Portswood"},
-        {"name": "Common"},
-        {"name": "Shirley"},
-        {"name": "City Center"},
-        {"name": "Ocean Village"}
+        {"name": "Itchen", "coords": [794, 530]},
+        {"name": "Woolston", "coords": [770, 657]},
+        {"name": "Weston", "coords": [925, 801]},
+        {"name": "Sholing", "coords": [1087, 528]},
+        {"name": "Thornhill", "coords": [1235, 388]},
+        {"name": "Bitterne", "coords": [923, 921]},
+        {"name": "Bitterne Park", "coords": [744, 109]},
+        {"name": "Portswood", "coords": [541, 85]},
+        {"name": "Common", "coords": [353, 40]},
+        {"name": "Shirley", "coords": [175, 119]},
+        {"name": "City Center", "coords": [413, 472]},
+        {"name": "Ocean Village", "coords": [530, 616]}
     ],
 
     "links": [
