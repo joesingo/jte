@@ -5,6 +5,68 @@
     <title>Journey Through Southampton</title>
     <style type="text/css">
 
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: "Helvetica", "Arial", sans-serif;
+    }
+
+    #left-panel, #right-panel {
+    }
+
+    #left-panel {
+        float: left;
+        width: 70%;
+    }
+
+    #right-panel {
+        float: right;
+        width: 30%;
+    }
+
+    #player-list {
+        display: table;
+        width: 100%;
+        padding: 0;
+        margin: 0;
+        color: white; /*bbb;*/
+    }
+
+    #player-list li {
+        text-align: center;
+    }
+
+    #player-list li {
+        display: table-cell;
+        padding: 20px;
+    }
+
+    .player-name {
+        font-size: 1.2em;
+    }
+
+    .current-player {
+        font-weight: bold;
+    }
+
+    #canvases {
+        /*display: block;*/
+        margin: auto;
+        position: relative;
+    }
+
+    #canvases canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+
+    img {
+        display: none;
+    }
+
     </style>
 </head>
 
@@ -15,36 +77,243 @@
 
     <h1>Journey Through Southampton</h1>
 
-    <p>Hello {{ username }}!</p>
+    <div id="left-panel">
+        <ol id="player-list"></ol>
+        <ol id="actions-list"></ol>
 
-    <div id="status-div"></div>
+        <div id="canvases">
+            <canvas id="map-canvas"></canvas>
+            <canvas id="game-canvas"></canvas>
+        </div>
+    </div>
+
+    <div id="right-panel">
+        Right panel
+    </div>
+
+    <!-- <code id="debug-area"></code> -->
+
+    <img id="map-image" src="{{ url_for("static", filename="map.png") }}" />
 
     <script type="text/javascript" src="/static/jquery-3.1.1.min.js"></script>
     <script type="text/javascript">
 
-    const UPDATE_INTERVAL = 1000;
+    function Map(cities_str) {
 
-    var map_str = document.getElementById("cities").innerHTML;
-    map_str = map_str.replace(/&#34;/g, '"');
-    var map = JSON.parse(map_str);
+        var cities = JSON.parse(cities_str);
 
-    var status_url = window.location.pathname + "status/";
-    var action_url = window.location.pathname + "action/";
+        /*
+         * Throw an exception if the provided ID is invalid;
+         */
+        var checkCityID = function(city_id) {
+            if (city_id < 0 || city_id >= cities.length) {
+                throw "Invalid city ID";
+            }
+        }
 
-    function update() {
-        $.ajax(status_url, {
+        /*
+         * Return the name of the city with the given ID. Throw an exception if the
+         * city does not exist
+         */
+        this.getCityName = function(city_id) {
+            var i = parseInt(city_id);
+            checkCityID(i);
+            return cities[i].name;
+        }
+
+        /*
+         * Return the canvas coordinates for a given city
+         */
+        this.getCityCoords = function(city_id) {
+            var i = parseInt(city_id);
+            checkCityID(i);
+
+            var coords = cities[i].coords;
+            return [
+                $("#map-canvas").width() * coords[0] / $("#map-image").width(),
+                $("#map-canvas").height() * coords[1] / $("#map-image").height(),
+            ];
+        }
+    }
+
+    function Game(game_map) {
+
+        var map = game_map;
+        var map_canvas = $("#map-canvas")[0];
+        var game_canvas = $("#game-canvas")[0];
+        var map_img = $("#map-image")[0];
+
+        var map_ctx = map_canvas.getContext("2d");
+        var game_ctx = game_canvas.getContext("2d");
+
+        /*
+         * Update the player list and draw flags on the canvas
+         */
+        this.drawPlayers = function(status) {
+            for (var i=0; i<status.players.length; i++) {
+                // Draw flag on the map
+                var flag_width = 10;
+                var flag_height = 50;
+                game_ctx.fillStyle = COLOURS[i];
+                var coords = map.getCityCoords(status.players[i].current_city);
+                game_ctx.fillRect(coords[0] - 0.5*flag_width, coords[1] - flag_height,
+                                  flag_width, flag_height);
+
+                var $name_span = $("<span>", {"class": "player-name"});
+                $name_span.text(status.players[i].name);
+
+                if (name == status.current_player) {
+                    $name_span.addClass("current-player");
+                }
+
+                var text = map.getCityName(status.players[i].current_city) +
+                                           " (" + status.players[i].progress +
+                                           ")";
+
+                var $item = $("<li>", {"css": {"background": COLOURS[i]}});
+                $item.append($name_span, "<br />", text);
+                $("#player-list").append($item);
+            }
+        }
+
+        /*
+         * Show the available actions to the user
+         */
+        this.drawActions = function(status) {
+            for (var i=0; i<status.actions.length; i++) {
+                var description = "";
+
+                switch (status.actions[i].type) {
+                    case ROLL_DICE_ACTION:
+                        description = "Roll dice";
+                        break;
+
+                    case TRAVEL_ACTION:
+                        var city_name = map.getCityName(status.actions[i].link.to_city);
+                        var type = status.actions[i].link.type;
+                        description = `Travel to ${city_name} via ${type}`;
+
+                        var coords = map.getCityCoords(status.actions[i].link.to_city);
+                        var radius = game_canvas.width * CITY_RADIUS / map_img.width;
+                        game_ctx.fillStyle = "blue";
+                        game_ctx.beginPath();
+                        game_ctx.arc(coords[0], coords[1], radius, 0, 2*Math.PI);
+                        game_ctx.fill();
+
+                        break;
+
+                    case WAIT_AT_PORT_ACTION:
+                        description = "Wait at port";
+                        break;
+                }
+
+                var $link = $(
+                    "<a>",
+                    {"href": "#",
+                     "onclick": `performAction(${status.actions[i].id})`,
+                     "text": description}
+                );
+                var $item = $("<li>");
+                $item.append($link);
+                $("#actions-list").append($item);
+            }
+        }
+
+        /*
+         * Draw the map
+         */
+        this.drawBackground = function() {
+            map_ctx.drawImage(map_img, 0, 0, map_canvas.width, map_canvas.height);
+        }
+
+        /*
+         * Clear the game canvas and update the player list, cards, and canvas
+         */
+        this.updateDisplay = function(status) {
+            game_ctx.clearRect(0, 0, game_canvas.width, game_canvas.height);
+
+            $("#player-list").text("");
+            this.drawPlayers(status);
+
+            $("#actions-list").text("");
+            if ("actions" in status) {
+                this.drawActions(status);
+            }
+        }
+
+        /*
+         * Resize all canvases so that their widths match the width of the left
+         * panel whilst preserving aspect ratio
+         */
+        this.resizeCanvases = function() {
+            var canvases = [map_canvas, game_canvas];
+
+            for (var i=0; i<canvases.length; i++) {
+                canvases[i].width = $("#left-panel").width();
+                canvases[i].height = canvases[i].width * (map_img.height / map_img.width);
+            }
+        }
+    }
+
+    /*
+     * Send an AJAX request to perform the specified action. Immediately update
+     * status if the request is successful
+     */
+    function performAction(action_id) {
+        $.ajax(ACTION_URL, {
+            "method": "POST",
+            "data": {
+                "action_id": action_id
+            },
+            "error": function(request, status, error) {
+                throw "Unexpected error performing action";
+            },
+            "success": function(response, status, request) {
+                getStatus();
+            }
+        });
+    }
+
+    /*
+     * Send an AJAX request to be updated on the current status of the game
+     */
+    function getStatus() {
+        $.ajax(STATUS_URL, {
             "method": "GET",
             "error": function(request, status, error) {
                 throw "Unexpected error retrieving status";
             },
             "success": function(response, status, request) {
-                $("#status-div").text(response);
+                // $("#debug-area").text(response);
+                game.updateDisplay(JSON.parse(response));
             }
-        })
+        });
     }
 
-    update();
-    window.setInterval(update, UPDATE_INTERVAL);
+    const UPDATE_INTERVAL = 1000;
+
+    const ROLL_DICE_ACTION = "roll_dice";
+    const TRAVEL_ACTION = "travel";
+    const WAIT_AT_PORT_ACTION = "wait_at_port";
+
+    const CITY_RADIUS = 20;
+
+    const COLOURS = ["#AA3939", "#226666", "#AA8439"];
+
+    var STATUS_URL = window.location.pathname + "status/";
+    var ACTION_URL = window.location.pathname + "action/";
+
+    var cities_str = document.getElementById("cities").innerHTML;
+    cities_str = cities_str.replace(/&#34;/g, '"');
+    var map = new Map(cities_str);
+
+    var game = new Game(map);
+    game.resizeCanvases();
+    game.drawBackground();
+
+    // Get the status and start the update loop
+    getStatus();
+    window.setInterval(getStatus, UPDATE_INTERVAL);
 
     </script>
 </body>
