@@ -87,9 +87,7 @@
         </div>
     </div>
 
-    <div id="right-panel">
-        Right panel
-    </div>
+    <div id="right-panel"></div>
 
     <!-- <code id="debug-area"></code> -->
 
@@ -278,14 +276,22 @@
      * Send an AJAX request to be updated on the current status of the game
      */
     function getStatus() {
-        $.ajax(STATUS_URL, {
+        $.ajax(STATUS_URL + latest_timestamp + "/", {
             "method": "GET",
             "error": function(request, status, error) {
                 throw "Unexpected error retrieving status";
             },
             "success": function(response, status, request) {
                 // $("#debug-area").text(response);
-                game.updateDisplay(JSON.parse(response));
+
+                // Only update if the response was 200 (i.e. something new
+                // has happened)
+                if (request.status == 200) {
+                    var game_status = JSON.parse(response);
+                    latest_timestamp = game_status.timestamp;
+
+                    game.updateDisplay(game_status);
+                }
             }
         });
     }
@@ -306,6 +312,8 @@
     var cities_str = document.getElementById("cities").innerHTML;
     cities_str = cities_str.replace(/&#34;/g, '"');
     var map = new Map(cities_str);
+
+    var latest_timestamp = 1.1;
 
     var game = new Game(map);
     game.resizeCanvases();

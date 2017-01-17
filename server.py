@@ -119,12 +119,19 @@ def play_game(game_id):
                            cities=json.dumps(game.game_map["cities"]))
 
 
-@app.route("/play/<int:game_id>/status/")
-def get_game_status(game_id):
-    """Return the game status as JSON"""
+@app.route("/play/<int:game_id>/status/<float:timestamp>/")
+def get_game_status(game_id, timestamp):
+    """Return the game status as JSON. If the latest status for the game is
+    not newer than the timestamp provided, return a 204"""
     game = get_game(game_id)
     username = get_username(game_id)
-    return json.dumps(game.get_status(username))
+    status = game.get_status(username)
+
+    if status["timestamp"] > timestamp:
+        return json.dumps(status)
+
+    else:
+        return "", 204
 
 
 @app.route("/play/<int:game_id>/action/", methods=["POST"])
