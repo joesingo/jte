@@ -63,6 +63,11 @@
         left: 0;
     }
 
+    #right-panel .message {
+        margin: 8px;
+        border-bottom: 1px solid #555;
+    }
+
     img {
         display: none;
     }
@@ -237,6 +242,22 @@
             if ("actions" in status) {
                 this.drawActions(status);
             }
+
+            for (var i=0; i<status["message_log"].length; i++) {
+                var msg = status["message_log"][i];
+
+                var $msgs = $("#right-panel .message");
+
+                if ($msgs.length == 0 ||
+                    msg["timestamp"] > $msgs.last().data("timestamp")) {
+
+                    var $msg_p = $("<p>", {"class": "message"});
+                    $msg_p.data("timestamp", msg["timestamp"]);
+                    $msg_p.text(msg["message"]);
+
+                    $("#right-panel").append($msg_p);
+                }
+            }
         }
 
         /*
@@ -247,7 +268,7 @@
             var canvases = [map_canvas, game_canvas];
 
             for (var i=0; i<canvases.length; i++) {
-                canvases[i].width = $("#left-panel").width();
+                canvases[i].width = $("#left-panel").width() - 10;
                 canvases[i].height = canvases[i].width * (map_img.height / map_img.width);
             }
         }

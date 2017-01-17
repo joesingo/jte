@@ -59,6 +59,29 @@ class CardDeck(object):
         return self.cards.pop()
 
 
+class MessageLog(object):
+    """An object to represent the message log for a game"""
+
+    MAX_MESSAGES = 10
+
+    def __init__(self):
+        self.messages = [None] * MessageLog.MAX_MESSAGES
+        self.ptr = 0  # Index of the position to insert the next message into
+
+    def add(self, message_str):
+        """Add a string to the log"""
+        self.messages[self.ptr] = {
+            "message": message_str,
+            "timestamp": time.time()
+        }
+        self.ptr = (self.ptr + 1) % MessageLog.MAX_MESSAGES
+
+    def get_list(self):
+        """Return a list of the messages in the log in order (oldest first)"""
+        l = self.messages[self.ptr:] + self.messages[:self.ptr]
+        return [i for i in l if i is not None]
+
+
 class Player(object):
     """A player in the game"""
 
@@ -113,18 +136,23 @@ class Game(object):
         self.current_player = None
         self.available_actions = None
         self.status = None
+        self.message_log = MessageLog()
         self.next_player()
         self.update_status()
 
     def next_player(self):
         """Advance the current_player counter"""
         if self.current_player is not None:
-            print("End of {}'s turn".format(self.current_player.name))
+            msg = "End of {}'s turn".format(self.current_player.name)
+            self.message_log.add(msg)
 
         self.current_player = self.player_queue.next()
         self.current_turn = Turn(self.current_player.current_city)
 
         self.available_actions = self.get_available_actions()
+
+        msg = "It's {}'s turn".format(self.current_player.name)
+        self.message_log.add(msg)
 
     def get_available_actions(self):
         """Calculate and return the actions the current player is able to
@@ -187,7 +215,7 @@ class Game(object):
 
         # If no actions are available then end turn now and recalculate
         if not self.available_actions:
-            print("{} got stuck!".format(self.current_player.name))
+            self.message_log.add("{} got stuck!".format(self.current_player.name))
             self.next_player()
             self.available_actions = self.get_available_actions()
 
@@ -199,6 +227,10 @@ class Game(object):
         # Give the player another go if they rolled a 6
         if self.current_turn.dice_points == 6:
             self.player_queue.previous()
+
+        msg = "{} rolled a {}".format(self.current_player.name,
+                                      self.current_turn.dice_points)
+        self.message_log.add(msg)
 
     def get_links(self):
         """Return a list of links that the current player can travel along.
@@ -258,11 +290,19 @@ class Game(object):
         if link not in self.get_links():
             raise InvalidMoveException("That is not a valid move")
 
+        current_city_str = self.get_city_name(self.current_player.current_city)
+        to_city_str = self.get_city_name(link["to_city"])
+        msg = "{}: {} -> {}".format(self.current_player.name, current_city_str,
+                                    to_city_str)
+        self.message_log.add(msg)
+
         self.current_player.current_city = link["to_city"]
         self.current_turn.cities.append(link["to_city"])
 
         if link["to_city"] in self.current_player.cities:
-            print("Got a city")
+            msg = "{} got a city".format(self.current_player.name)
+            self.message_log.add(msg)
+
             self.current_player.cities_visited.append(link["to_city"])
 
         self.win_check()
@@ -288,14 +328,10 @@ class Game(object):
         for player in self.players:
             if set(player.cities_visited) == set(player.cities):
                 self.end_game(player)
-            else:
-                print("Cities remaining are:")
-                print(set(player.cities) - set(player.cities_visited))
 
     def end_game(self, winner):
         self.in_progress = False
-        print("{} has won!".format(winner.name))
-        sys.exit(0)
+        self.message_log.add("{} has won!".format(winner.name))
 
     def get_status(self, username):
         """Return the status as set in update_status(). username is the name of the user
@@ -326,6 +362,7 @@ class Game(object):
             "dice_roll": self.current_turn.dice_roll,
             "dice_points": self.current_turn.dice_points,
             "players": [],
+            "message_log": self.message_log.get_list(),
             "actions": self.available_actions
         }
 
