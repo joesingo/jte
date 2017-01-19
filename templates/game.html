@@ -180,15 +180,33 @@
         }
 
         /*
+         * Add a button in the message log that the player can click to perform
+         * an action in the game
+         */
+        this.addButton = function(text, action_id) {
+            var $button = $("<button>", {
+                "text": text
+            });
+            $button.on("click",
+                function() {
+                    performAction(action_id);
+                }
+            );
+            var $p = $("<p>", {"class": "message"}).append($button);
+            $("#right-panel").append($p);
+        }
+
+        /*
          * Show the available actions to the user
          */
         this.drawActions = function(status) {
-            for (var i=0; i<status.actions.length; i++) {
+            for (let i=0; i<status.actions.length; i++) {
                 var description = "";
 
                 switch (status.actions[i].type) {
                     case ROLL_DICE_ACTION:
                         description = "Roll dice";
+                        this.addButton(description, status.actions[i].id);
                         break;
 
                     case TRAVEL_ACTION:
@@ -235,28 +253,32 @@
         this.updateDisplay = function(status) {
             game_ctx.clearRect(0, 0, game_canvas.width, game_canvas.height);
 
-            $("#player-list").text("");
-            this.drawPlayers(status);
-
-            $("#actions-list").text("");
-            if ("actions" in status) {
-                this.drawActions(status);
-            }
-
             for (var i=0; i<status["message_log"].length; i++) {
                 var msg = status["message_log"][i];
 
-                var $msgs = $("#right-panel .message");
+                var $msgs = $("#right-panel .game-message");
 
                 if ($msgs.length == 0 ||
                     msg["timestamp"] > $msgs.last().data("timestamp")) {
 
-                    var $msg_p = $("<p>", {"class": "message"});
+                    var $msg_p = $("<p>", {"class": "message game-message"});
                     $msg_p.data("timestamp", msg["timestamp"]);
                     $msg_p.text(msg["message"]);
 
                     $("#right-panel").append($msg_p);
                 }
+            }
+
+            $("#player-list").text("");
+            this.drawPlayers(status);
+
+            $("#actions-list").text("");
+
+            // Remove buttons in the message log
+            $("#right-panel button").parent().remove();
+
+            if ("actions" in status) {
+                this.drawActions(status);
             }
         }
 
