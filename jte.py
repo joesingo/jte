@@ -303,10 +303,18 @@ class Game(object):
         self.current_turn.cities.append(link["to_city"])
 
         if link["to_city"] in self.current_player.cities:
-            msg = "{} got a city".format(self.current_player.name)
-            self.message_log.add(msg)
+            p = self.current_player
 
-            self.current_player.cities_visited.append(link["to_city"])
+            # Work out whether the player has visited all cities except their
+            # home city
+            visited_all = (list(set(p.cities) - set(p.cities_visited))
+                           == [p.home_city])
+
+            if link["to_city"] != p.home_city or visited_all:
+                msg = "{} got a city".format(self.current_player.name)
+                self.message_log.add(msg)
+
+                self.current_player.cities_visited.append(link["to_city"])
 
         self.win_check()
 
