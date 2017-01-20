@@ -161,6 +161,9 @@ class Game(object):
              "type": <one of the constants at the top of this class>
              ""}
         """
+        if not self.in_progress:
+            return []
+
         actions = []
 
         if self.current_turn.dice_points is None:
@@ -340,10 +343,12 @@ class Game(object):
         # Copy the status so some things can be removed
         status = copy.deepcopy(self.status)
 
-        # Don't show other players's cards to this player
+        # Put this player's cards in top level in the status dict
         for p in status["players"]:
-            if p["name"] != username:
-                del p["cards"]
+            if p["name"] == username:
+                status["cards"] = p["cards"]
+
+            del p["cards"]
 
         # Only show actions if it is that player's turn
         if username != self.current_player.name:

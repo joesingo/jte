@@ -26,21 +26,29 @@
         width: 30%;
     }
 
-    #player-list {
+    #player-list, #card-list {
         display: table;
         width: 100%;
         padding: 0;
         margin: 0;
-        color: white; /*bbb;*/
     }
 
-    #player-list li {
+    #player-list {
+        color: white;
+    }
+
+    #player-list li, #card-list li {
         text-align: center;
-    }
-
-    #player-list li {
         display: table-cell;
         padding: 20px;
+    }
+
+    #card-list li {
+        border: 1px solid black;
+    }
+
+    #card-list li.visited {
+        background: #bbb;
     }
 
     .player-name {
@@ -49,18 +57,6 @@
 
     .current-player {
         font-weight: bold;
-    }
-
-    #canvases {
-        /*display: block;*/
-        margin: auto;
-        position: relative;
-    }
-
-    #canvases canvas {
-        position: absolute;
-        top: 0;
-        left: 0;
     }
 
     #right-panel .message {
@@ -82,19 +78,19 @@
 
     <h1>Journey Through Southampton</h1>
 
+    <!-- <code id="debug-area"></code> -->
+
     <div id="left-panel">
         <ol id="player-list"></ol>
         <ol id="actions-list"></ol>
 
-        <div id="canvases">
-            <canvas id="map-canvas"></canvas>
-            <canvas id="game-canvas"></canvas>
-        </div>
+        <canvas id="game-canvas"></canvas>
+
+        <ol id="card-list"></ol>
     </div>
 
     <div id="right-panel"></div>
 
-    <!-- <code id="debug-area"></code> -->
 
     <img id="map-image" src="{{ url_for("static", filename="map.png") }}" />
 
@@ -133,8 +129,8 @@
 
             var coords = cities[i].coords;
             return [
-                $("#map-canvas").width() * coords[0] / $("#map-image").width(),
-                $("#map-canvas").height() * coords[1] / $("#map-image").height(),
+                $("#game-canvas").width() * coords[0] / $("#map-image").width(),
+                $("#game-canvas").height() * coords[1] / $("#map-image").height(),
             ];
         }
     }
@@ -142,12 +138,10 @@
     function Game(game_map) {
 
         var map = game_map;
-        var map_canvas = $("#map-canvas")[0];
-        var game_canvas = $("#game-canvas")[0];
         var map_img = $("#map-image")[0];
 
-        var map_ctx = map_canvas.getContext("2d");
-        var game_ctx = game_canvas.getContext("2d");
+        var canvas = $("#game-canvas")[0];
+        var ctx = canvas.getContext("2d");
 
         /*
          * Update the player list and draw flags on the canvas
@@ -157,10 +151,10 @@
                 // Draw flag on the map
                 var flag_width = 10;
                 var flag_height = 50;
-                game_ctx.fillStyle = COLOURS[i];
+                ctx.fillStyle = COLOURS[i];
                 var coords = map.getCityCoords(status.players[i].current_city);
-                game_ctx.fillRect(coords[0] - 0.5*flag_width, coords[1] - flag_height,
-                                  flag_width, flag_height);
+                ctx.fillRect(coords[0] - 0.5*flag_width, coords[1] - flag_height,
+                             flag_width, flag_height);
 
                 var $name_span = $("<span>", {"class": "player-name"});
                 $name_span.text(status.players[i].name);
@@ -176,6 +170,22 @@
                 var $item = $("<li>", {"css": {"background": COLOURS[i]}});
                 $item.append($name_span, "<br />", text);
                 $("#player-list").append($item);
+            }
+        }
+
+        /*
+         * Update the player's cards showing which have been visited
+         */
+        this.drawCards = function(status) {
+            for (var i=0; i<status.cards.length; i++) {
+                var $li = $("<li>").append(map.getCityName(status.cards[i].id));
+
+                if (status.cards[i].visited) {
+                    $li.addClass("visited");
+                }
+
+                console.log($("#card-list"));
+                $("#card-list").append($li);
             }
         }
 
@@ -215,11 +225,11 @@
                         description = `Travel to ${city_name} via ${type}`;
 
                         var coords = map.getCityCoords(status.actions[i].link.to_city);
-                        var radius = game_canvas.width * CITY_RADIUS / map_img.width;
-                        game_ctx.fillStyle = "blue";
-                        game_ctx.beginPath();
-                        game_ctx.arc(coords[0], coords[1], radius, 0, 2*Math.PI);
-                        game_ctx.fill();
+                        var radius = canvas.width * CITY_RADIUS / map_img.width;
+                        ctx.fillStyle = "blue";
+                        ctx.beginPath();
+                        ctx.arc(coords[0], coords[1], radius, 0, 2*Math.PI);
+                        ctx.fill();
 
                         break;
 
@@ -244,14 +254,15 @@
          * Draw the map
          */
         this.drawBackground = function() {
-            map_ctx.drawImage(map_img, 0, 0, map_canvas.width, map_canvas.height);
+            ctx.drawImage(map_img, 0, 0, canvas.width, canvas.height);
         }
 
         /*
          * Clear the game canvas and update the player list, cards, and canvas
          */
         this.updateDisplay = function(status) {
-            game_ctx.clearRect(0, 0, game_canvas.width, game_canvas.height);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            this.drawBackground();
 
             for (var i=0; i<status["message_log"].length; i++) {
                 var msg = status["message_log"][i];
@@ -280,6 +291,10 @@
             if ("actions" in status) {
                 this.drawActions(status);
             }
+
+            // Show cards
+            $("#card-list").text("");
+            this.drawCards(status);
         }
 
         /*
@@ -287,12 +302,8 @@
          * panel whilst preserving aspect ratio
          */
         this.resizeCanvases = function() {
-            var canvases = [map_canvas, game_canvas];
-
-            for (var i=0; i<canvases.length; i++) {
-                canvases[i].width = $("#left-panel").width() - 10;
-                canvases[i].height = canvases[i].width * (map_img.height / map_img.width);
-            }
+            canvas.width = $("#left-panel").width();
+            canvas.height = canvas.width * (map_img.height / map_img.width);
         }
     }
 
