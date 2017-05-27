@@ -13,7 +13,7 @@ app.secret_key = os.urandom(24)
 MAX_GAME_ID = 100
 matchmakers = {}
 
-with open("map.json") as map_file:
+with open("europe-map.json") as map_file:
     soton_map = json.load(map_file)
 
 

@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Journey Through Southampton</title>
+    <title>Journey Through Europe</title>
     <style type="text/css">
 
     * {
@@ -76,7 +76,7 @@
     {{ cities }}
     </script>
 
-    <h1>Journey Through Southampton</h1>
+    <h1>Journey Through Europe</h1>
 
     <!-- <code id="debug-area"></code> -->
 
@@ -91,9 +91,8 @@
 
     <div id="right-panel"></div>
 
-
-    <img id="map-image" src="{{ url_for("static", filename="map.png") }}" />
-
+    <script type="text/javascript" src="https://joesingo.github.io/grid/matrix.js"></script>
+    <script type="text/javascript" src="https://joesingo.github.io/grid/grid.js"></script>
     <script type="text/javascript" src="/static/jquery-3.1.1.min.js"></script>
     <script type="text/javascript">
 
@@ -121,40 +120,46 @@
         }
 
         /*
-         * Return the canvas coordinates for a given city
+         * Return the coordinates in the map image for a given city
          */
         this.getCityCoords = function(city_id) {
             var i = parseInt(city_id);
             checkCityID(i);
 
-            var coords = cities[i].coords;
-            return [
-                $("#game-canvas").width() * coords[0] / $("#map-image").width(),
-                $("#game-canvas").height() * coords[1] / $("#map-image").height(),
-            ];
+            return cities[i].coords;
         }
     }
 
-    function Game(game_map) {
+    function Game(game_map, canvas) {
 
         var map = game_map;
-        var map_img = $("#map-image")[0];
 
-        var canvas = $("#game-canvas")[0];
-        var ctx = canvas.getContext("2d");
+        var grid = new Grid(canvas);
+
+        grid.settings.background_colour = "black";
+        grid.settings.grid_lines = {};
+        grid.settings.axes.enabled = false;
+        grid.redraw();
+
+        // Draw background image so that it fills the canvas
+        var ratios = grid.getUnitsToPx();
+        var map_width = canvas.width * ratios[0];
+        var map_height = canvas.height * ratios[1];
+        var background = grid.addImage(images.map, 0, 0, map_width, map_height);
+        grid.translate(-0.5*map_width, 0.5*map_height);
+
+        // A list of the current points on the map that can be clicked
+        var click_points = [];
+
+        // grid object IDs for the player flags
+        var player_flag_ids = [];
 
         /*
          * Update the player list and draw flags on the canvas
          */
         this.drawPlayers = function(status) {
+
             for (var i=0; i<status.players.length; i++) {
-                // Draw flag on the map
-                var flag_width = 10;
-                var flag_height = 50;
-                ctx.fillStyle = COLOURS[i];
-                var coords = map.getCityCoords(status.players[i].current_city);
-                ctx.fillRect(coords[0] - 0.5*flag_width, coords[1] - flag_height,
-                             flag_width, flag_height);
 
                 var $name_span = $("<span>", {"class": "player-name"});
                 $name_span.text(status.players[i].name);
@@ -170,6 +175,37 @@
                 var $item = $("<li>", {"css": {"background": COLOURS[i]}});
                 $item.append($name_span, "<br />", text);
                 $("#player-list").append($item);
+
+                var img_coords = map.getCityCoords(status.players[i].current_city);
+                var grid_coords = [map_width * img_coords[0] / images.map.width,
+                                   map_height * (1 - img_coords[1]) / images.map.height];
+
+                // Flag dimension in grid units
+                var ratios = grid.getUnitsToPx();
+                var pole_width = 6 * ratios[0];
+                var pole_height = 30 * ratios[1];
+                var flag_size = 15 * ratios[0];
+
+                var points = [];
+                var x = grid_coords[0] - 0.5*pole_width;
+                var y = grid_coords[1];
+                points.push([x, y]);
+                y += pole_height;
+                points.push([x, y]);
+                x += pole_width;
+                points.push([x, y]);
+                x += flag_size;
+                points.push([x, y]);
+                y -= flag_size;
+                points.push([x, y]);
+                x -= flag_size;
+                points.push([x, y]);
+                y = grid_coords[1];
+                points.push([x, y]);
+
+                var id = grid.addShape(points, {"colour": COLOURS[i],
+                                                "fill": true});
+                player_flag_ids.push(id);
             }
         }
 
@@ -184,7 +220,6 @@
                     $li.addClass("visited");
                 }
 
-                console.log($("#card-list"));
                 $("#card-list").append($li);
             }
         }
@@ -220,16 +255,20 @@
                         break;
 
                     case TRAVEL_ACTION:
-                        var city_name = map.getCityName(status.actions[i].link.to_city);
+                        var city_id = status.actions[i].link.to_city;
+                        var city_name = map.getCityName(city_id);
                         var type = status.actions[i].link.type;
                         description = `Travel to ${city_name} via ${type}`;
 
-                        var coords = map.getCityCoords(status.actions[i].link.to_city);
-                        var radius = canvas.width * CITY_RADIUS / map_img.width;
-                        ctx.fillStyle = "blue";
-                        ctx.beginPath();
-                        ctx.arc(coords[0], coords[1], radius, 0, 2*Math.PI);
-                        ctx.fill();
+                        if (!(city_id in click_points)) {
+                            click_points[city_id] = {"action_ids": [],
+                                                     "airport": false};
+                        }
+                        click_points[city_id].action_ids.push(status.actions[i].id);
+
+                        if (type == AIR_LINK) {
+                            click_points[city_id].airport = true;
+                        }
 
                         break;
 
@@ -251,18 +290,16 @@
         }
 
         /*
-         * Draw the map
-         */
-        this.drawBackground = function() {
-            ctx.drawImage(map_img, 0, 0, canvas.width, canvas.height);
-        }
-
-        /*
          * Clear the game canvas and update the player list, cards, and canvas
          */
         this.updateDisplay = function(status) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            this.drawBackground();
+
+            // Remove any previous player flags
+            for (var i=0; i<player_flag_ids.length; i++) {
+                grid.removeObject(player_flag_ids[i]);
+            }
+            player_flag_ids = [];
+            grid.redraw();
 
             for (var i=0; i<status["message_log"].length; i++) {
                 var msg = status["message_log"][i];
@@ -288,6 +325,8 @@
             // Remove buttons in the message log
             $("#right-panel button").parent().remove();
 
+            click_points = [];
+
             if ("actions" in status) {
                 this.drawActions(status);
             }
@@ -296,15 +335,6 @@
             $("#card-list").text("");
             this.drawCards(status);
         }
-
-        /*
-         * Resize all canvases so that their widths match the width of the left
-         * panel whilst preserving aspect ratio
-         */
-        this.resizeCanvases = function() {
-            canvas.width = $("#left-panel").width();
-            canvas.height = canvas.width * (map_img.height / map_img.width);
-        }
     }
 
     /*
@@ -312,6 +342,7 @@
      * status if the request is successful
      */
     function performAction(action_id) {
+        $("#action-list").text("Loading...");
         $.ajax(ACTION_URL, {
             "method": "POST",
             "data": {
@@ -356,6 +387,10 @@
     const TRAVEL_ACTION = "travel";
     const WAIT_AT_PORT_ACTION = "wait_at_port";
 
+    const LAND_LINK = "land";
+    const SEA_LINK = "sea";
+    const AIR_LINK = "air";
+
     const CITY_RADIUS = 20;
 
     const COLOURS = ["#AA3939", "#226666", "#AA8439"];
@@ -363,19 +398,29 @@
     var STATUS_URL = window.location.pathname + "status/";
     var ACTION_URL = window.location.pathname + "action/";
 
+    var images = {};
+    images.map = new Image();
+    images.map.src = "{{ url_for("static", filename="europe.png") }}";
+
     var cities_str = document.getElementById("cities").innerHTML;
     cities_str = cities_str.replace(/&#34;/g, '"');
     var map = new Map(cities_str);
 
     var latest_timestamp = 1.1;
 
-    var game = new Game(map);
-    game.resizeCanvases();
-    game.drawBackground();
+    var canvas = $("#game-canvas")[0];
+    canvas.width = $("#left-panel").width();
+    canvas.height = canvas.width * images.map.height / images.map.width;
 
-    // Get the status and start the update loop
-    getStatus();
-    window.setInterval(getStatus, UPDATE_INTERVAL);
+    var game;
+
+    images.map.onload = function() {
+        game = new Game(map, canvas);
+
+        // Get the status and start the update loop
+        getStatus();
+        window.setInterval(getStatus, UPDATE_INTERVAL);
+    }
 
     </script>
 </body>

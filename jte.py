@@ -318,19 +318,20 @@ class Game(object):
 
         self.win_check()
 
-        if link["type"] == LinkTypes.AIR.value:
-            self.current_turn.dice_points -= int(link["cost"])
-            self.current_turn.flown = True
+        if self.in_progress:
+            if link["type"] == LinkTypes.AIR.value:
+                self.current_turn.dice_points -= int(link["cost"])
+                self.current_turn.flown = True
 
-        elif link["type"] == LinkTypes.LAND.value:
-            self.current_turn.dice_points -= 1
+            elif link["type"] == LinkTypes.LAND.value:
+                self.current_turn.dice_points -= 1
 
-        elif link["type"] == LinkTypes.SEA.value:
-            self.next_player()
+            elif link["type"] == LinkTypes.SEA.value:
+                self.next_player()
 
-        # End turn now if all dice points are used up
-        if self.current_turn.dice_points == 0:
-            self.next_player()
+            # End turn now if all dice points are used up
+            if self.current_turn.dice_points == 0:
+                self.next_player()
 
     def get_city_name(self, city_id):
         return self.game_map["cities"][city_id]["name"]
