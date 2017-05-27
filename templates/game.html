@@ -142,9 +142,9 @@
         grid.redraw();
 
         // Draw background image so that it fills the canvas
-        var ratios = grid.getUnitsToPx();
-        var map_width = canvas.width * ratios[0];
-        var map_height = canvas.height * ratios[1];
+        var fullscreen_ratio = grid.getUnitsToPx();
+        var map_width = canvas.width * fullscreen_ratio;
+        var map_height = canvas.height * fullscreen_ratio;
         var background = grid.addImage(images.map, 0, 0, map_width, map_height);
         grid.translate(-0.5*map_width, 0.5*map_height);
 
@@ -154,10 +154,100 @@
         // grid object IDs for the player flags
         var player_flag_ids = [];
 
+        var sprites = {
+            "player_flags": [],
+            "cities": []
+        };
+
+        // Calculate sizes of things in grid units based on size in pixels at
+        // fullscreen zoom level
+        var sizes = {
+            "flags": {
+                "pole_width": 6 * fullscreen_ratio,
+                "pole_height": 30 * fullscreen_ratio,
+                "flag_size": 15 * fullscreen_ratio
+            },
+
+            "cities": {
+                "radius": 5 * fullscreen_ratio,
+                "border_width": 1 * fullscreen_ratio
+            }
+        }
+
+        /*
+         * Add a player flag to the grid and add the object ID to the
+         * sprites.player_flags
+         */
+        this.addPlayerFlag = function(name, colour, city) {
+
+            var img_coords = map.getCityCoords(city);
+            var grid_coords = [map_width * img_coords[0] / images.map.width,
+                               map_height * (1 - img_coords[1]) / images.map.height];
+
+            var points = [];
+            var x = grid_coords[0] - 0.5*sizes.flags.pole_width;
+            var y = grid_coords[1];
+            points.push([x, y]);
+            y += sizes.flags.pole_height;
+            points.push([x, y]);
+            x += sizes.flags.pole_width;
+            points.push([x, y]);
+            x += sizes.flags.flag_size;
+            points.push([x, y]);
+            y -= sizes.flags.flag_size;
+            points.push([x, y]);
+            x -= sizes.flags.flag_size;
+            points.push([x, y]);
+            y = grid_coords[1];
+            points.push([x, y]);
+
+            var id = grid.addShape(points, {"colour": colour, "fill": true});
+            sprites.player_flags.push(id);
+        }
+
+        /*
+         * Add a circle at the coordinates of a city. circle_style is one of
+         * LOCATING_CIRCLE or TRAVEL_CIRCLE. [border_id, inner_id] is
+         * added to sprites.cities
+         */
+        this.addCityCircle = function(city, circle_style, airport) {
+
+            var img_coords = map.getCityCoords(city);
+            var grid_coords = [map_width * img_coords[0] / images.map.width,
+                               map_height * (1 - img_coords[1]) / images.map.height];
+
+            var border_style = {"colour": "white", "fill": true};
+            var border_id = grid.addCircle(grid_coords[0], grid_coords[1],
+                                           sizes.cities.radius,
+                                           border_style);
+
+            var style = {"fill": true};
+
+            switch (circle_style) {
+                case TRAVEL_CIRCLE:
+                    style.colour = (airport ? "red": "black")
+                    break
+            }
+
+            var inner_id = grid.addCircle(
+                grid_coords[0], grid_coords[1],
+                sizes.cities.radius - sizes.cities.border_width,
+                style
+            );
+
+            sprites.cities.push([border_id, inner_id]);
+        }
+
         /*
          * Update the player list and draw flags on the canvas
          */
         this.drawPlayers = function(status) {
+
+            for (var i=0; i<sprites.player_flags.length; i++) {
+                grid.removeObject(sprites.player_flags[i]);
+            }
+            sprites.player_flags = [];
+            grid.redraw();
 
             for (var i=0; i<status.players.length; i++) {
 
@@ -176,36 +266,8 @@
                 $item.append($name_span, "<br />", text);
                 $("#player-list").append($item);
 
-                var img_coords = map.getCityCoords(status.players[i].current_city);
-                var grid_coords = [map_width * img_coords[0] / images.map.width,
-                                   map_height * (1 - img_coords[1]) / images.map.height];
-
-                // Flag dimension in grid units
-                var ratios = grid.getUnitsToPx();
-                var pole_width = 6 * ratios[0];
-                var pole_height = 30 * ratios[1];
-                var flag_size = 15 * ratios[0];
-
-                var points = [];
-                var x = grid_coords[0] - 0.5*pole_width;
-                var y = grid_coords[1];
-                points.push([x, y]);
-                y += pole_height;
-                points.push([x, y]);
-                x += pole_width;
-                points.push([x, y]);
-                x += flag_size;
-                points.push([x, y]);
-                y -= flag_size;
-                points.push([x, y]);
-                x -= flag_size;
-                points.push([x, y]);
-                y = grid_coords[1];
-                points.push([x, y]);
-
-                var id = grid.addShape(points, {"colour": COLOURS[i],
-                                                "fill": true});
-                player_flag_ids.push(id);
+                this.addPlayerFlag(status.players[i].name, COLOURS[i],
+                                   status.players[i].current_city);
             }
         }
 
@@ -260,15 +322,17 @@
                         var type = status.actions[i].link.type;
                         description = `Travel to ${city_name} via ${type}`;
 
-                        if (!(city_id in click_points)) {
-                            click_points[city_id] = {"action_ids": [],
-                                                     "airport": false};
-                        }
-                        click_points[city_id].action_ids.push(status.actions[i].id);
+                        // if (!(city_id in click_points)) {
+                        //     click_points[city_id] = {"action_ids": [],
+                        //                              "airport": false};
+                        // }
+                        // click_points[city_id].action_ids.push(status.actions[i].id);
 
-                        if (type == AIR_LINK) {
-                            click_points[city_id].airport = true;
-                        }
+                        // if (type == AIR_LINK) {
+                        //     click_points[city_id].airport = true;
+                        // }
+
+                        this.addCityCircle(city_id, TRAVEL_CIRCLE, (type == AIR_LINK));
 
                         break;
 
@@ -317,8 +381,6 @@
                 }
             }
 
-            $("#player-list").text("");
-            this.drawPlayers(status);
 
             $("#actions-list").text("");
 
@@ -330,6 +392,9 @@
             if ("actions" in status) {
                 this.drawActions(status);
             }
+
+            $("#player-list").text("");
+            this.drawPlayers(status);
 
             // Show cards
             $("#card-list").text("");
@@ -392,6 +457,10 @@
     const AIR_LINK = "air";
 
     const CITY_RADIUS = 20;
+
+    // The different styles of circles at cities
+    const LOCATING_CIRCLE = "locating";
+    const TRAVEL_CIRCLE = "travlel";
 
     const COLOURS = ["#AA3939", "#226666", "#AA8439"];
 
