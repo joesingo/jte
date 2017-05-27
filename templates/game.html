@@ -13,6 +13,19 @@
         font-family: "Helvetica", "Arial", sans-serif;
     }
 
+    button {
+        padding: 6px 12px;
+        font-size: 14px;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+
+    button:hover {
+        background: #e6e6e6;
+        cursor: pointer;
+    }
+
     #left-panel, #right-panel {
     }
 
@@ -64,6 +77,41 @@
         border-bottom: 1px solid #555;
     }
 
+    .popup {
+        display: none;
+        position: fixed;
+        width: 400px;
+        top: 200px;
+        left: 50%;
+        margin-left: -200px;
+        border: 3px solid black;
+        background: #ddd;
+        padding: 40px;
+        text-align: center;
+        z-index: 101;
+    }
+
+    #gray-screen {
+        display: none;
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        opacity: 0.5;
+        background: gray;
+        z-index: 100;
+    }
+
+    #action-choice-popup ul {
+        padding-left: 0;
+    }
+
+    #action-choice-popup li {
+        list-style: none;
+        margin-bottom: 10px;
+    }
+
     img {
         display: none;
     }
@@ -89,7 +137,14 @@
         <ol id="card-list"></ol>
     </div>
 
+    <div id="gray-screen"></div>
+    <div id="action-choice-popup" class="popup">
+        Choose action...
+        <ul></ul>
+    </div>
+
     <div id="right-panel"></div>
+
 
     <script type="text/javascript" src="https://joesingo.github.io/grid/matrix.js"></script>
     <script type="text/javascript" src="https://joesingo.github.io/grid/grid.js"></script>
@@ -151,6 +206,8 @@
         // A list of the current points on the map that can be clicked
         var click_points = [];
 
+        var hovered_click_point = null;
+
         // grid object IDs for the player flags
         var player_flag_ids = [];
 
@@ -210,14 +267,9 @@
          * LOCATING_CIRCLE or TRAVEL_CIRCLE. [border_id, inner_id] is
          * added to sprites.cities
          */
-        this.addCityCircle = function(city, circle_style, airport) {
-
-            var img_coords = map.getCityCoords(city);
-            var grid_coords = [map_width * img_coords[0] / images.map.width,
-                               map_height * (1 - img_coords[1]) / images.map.height];
-
+        this.addCityCircle = function(coords, circle_style, airport) {
             var border_style = {"colour": "white", "fill": true};
-            var border_id = grid.addCircle(grid_coords[0], grid_coords[1],
+            var border_id = grid.addCircle(coords[0], coords[1],
                                            sizes.cities.radius,
                                            border_style);
 
@@ -230,7 +282,7 @@
             }
 
             var inner_id = grid.addCircle(
-                grid_coords[0], grid_coords[1],
+                coords[0], coords[1],
                 sizes.cities.radius - sizes.cities.border_width,
                 style
             );
@@ -322,18 +374,22 @@
                         var type = status.actions[i].link.type;
                         description = `Travel to ${city_name} via ${type}`;
 
-                        // if (!(city_id in click_points)) {
-                        //     click_points[city_id] = {"action_ids": [],
-                        //                              "airport": false};
-                        // }
-                        // click_points[city_id].action_ids.push(status.actions[i].id);
+                        var img_coords = map.getCityCoords(city_id);
+                        var coords = [
+                            map_width * img_coords[0] / images.map.width,
+                            map_height * (1 - img_coords[1]) / images.map.height
+                        ];
 
-                        // if (type == AIR_LINK) {
-                        //     click_points[city_id].airport = true;
-                        // }
+                        this.addCityCircle(coords, TRAVEL_CIRCLE, (type == AIR_LINK));
 
-                        this.addCityCircle(city_id, TRAVEL_CIRCLE, (type == AIR_LINK));
-
+                        if (!(city_id in click_points)) {
+                            click_points[city_id] = {"coords": coords,
+                                                     "actions": []};
+                        }
+                        click_points[city_id].actions.push({
+                            "id": status.actions[i].id,
+                            "link_type": type
+                        });
                         break;
 
                     case WAIT_AT_PORT_ACTION:
@@ -351,6 +407,24 @@
                 $item.append($link);
                 $("#actions-list").append($item);
             }
+        }
+
+        /*
+         * Return the click point object at (x, y) or null if no such point
+         * exists
+         */
+        this.getClickPoint = function(x, y) {
+            for (var i in click_points) {
+                var cx = click_points[i].coords[0];
+                var cy = click_points[i].coords[1];
+                var distance = Math.sqrt(Math.pow(x - cx, 2) + Math.pow(y - cy, 2));
+
+                if (distance <= sizes.cities.radius) {
+                    return click_points[i];
+                }
+            }
+
+            return null;
         }
 
         /*
@@ -387,7 +461,18 @@
             // Remove buttons in the message log
             $("#right-panel button").parent().remove();
 
+            // Remove city circles
+            for (var i=0; i<sprites.cities.length; i++) {
+                // Inner loop since city is made of multiple circles (border and
+                // inside)
+                for (var j=0; j<sprites.cities[i].length; j++) {
+                    grid.removeObject(sprites.cities[i][j]);
+                }
+            }
+            sprites.cities = [];
+
             click_points = [];
+            hovered_click_point = null;
 
             if ("actions" in status) {
                 this.drawActions(status);
@@ -400,6 +485,71 @@
             $("#card-list").text("");
             this.drawCards(status);
         }
+
+        var g = this;
+        canvas.addEventListener("mousemove", function(e) {
+            var grid_coords = grid.fromCanvasCoords(e.offsetX, e.offsetY);
+
+            var click_point = g.getClickPoint(grid_coords[0], grid_coords[1]);
+
+            if (click_point) {
+                hovered_click_point = click_point;
+                document.body.style.cursor = "pointer";
+            }
+            // Unhover if a point was previously hovered but is not now
+            else if (hovered_click_point) {
+                hovered_click_point = null;
+                document.body.style.cursor = "default";
+            }
+        });
+
+        canvas.addEventListener("click", function(e) {
+            if (hovered_click_point) {
+
+                // Perform action straigt away if there is only one for this
+                // click point...
+                if (hovered_click_point.actions.length == 1) {
+                    performAction(hovered_click_point.actions[0].id);
+                }
+                // ...otherwise show popup so that user can choose
+                else {
+                    var $list = $("#action-choice-popup ul");
+                    $list.text("");
+
+                    for (let i=0; i<hovered_click_point.actions.length; i++) {
+                        var type = hovered_click_point.actions[i].link_type;
+                        var $button = $("<button>", {"text": `Travel by ${type}`})
+                        let id = hovered_click_point.actions[i].id;
+
+                        $button.on("click", function() {
+                            performAction(id);
+                            hidePopup("action-choice-popup");
+                        });
+
+                        $list.append($("<li>").append($button));
+                    }
+
+                    showPopup("action-choice-popup");
+                }
+
+                // Reset cursor once clicked
+                document.body.style.cursor = "default";
+            }
+        })
+
+    }
+
+    /*
+     * Show a semi-opaque rectangle to gray out the screen and show a fixed
+     * position popup
+     */
+    function showPopup(id) {
+        $("#gray-screen").show();
+        $("#" + id).show();
+    }
+    function hidePopup(id) {
+        $("#gray-screen").hide();
+        $("#" + id).hide();
     }
 
     /*
@@ -455,8 +605,6 @@
     const LAND_LINK = "land";
     const SEA_LINK = "sea";
     const AIR_LINK = "air";
-
-    const CITY_RADIUS = 20;
 
     // The different styles of circles at cities
     const LOCATING_CIRCLE = "locating";
