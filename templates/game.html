@@ -280,27 +280,24 @@
 
         /*
          * Hide/unhide labels depending on the zoom level and whether the city
-         * is an airport
+         * is an airport or being located
          */
         this.setLabelVisibility = function() {
             var zoom_level = this.getZoomLevel();
 
-            // Show everything if level is positive (i.e. zoomed in)
-            if (zoom_level > 0) {
-                for (var city_id in sprites.labels) {
-                    var obj = grid.getObject(sprites.labels[city_id]);
+            for (var city_id in sprites.labels) {
+                var obj = grid.getObject(sprites.labels[city_id]);
+
+                // Show label if zoomed in or city is airport or being located
+                if (zoom_level > 0 || "airport" in obj.data ||
+                    city_id in sprites.located_cities)
+                {
                     obj.style.hidden = false;
                 }
-            }
 
-            // Otherwise only show airports
-            else {
-                for (var city_id in sprites.labels) {
-                    var obj = grid.getObject(sprites.labels[city_id]);
-
-                    if (!("airport" in obj.data)) {
-                        obj.style.hidden = true;
-                    }
+                // Otherwise label should not be shown
+                else {
+                    obj.style.hidden = true;
                 }
             }
         }
@@ -329,7 +326,7 @@
             // Show airport labels
             for (var i=0; i<airports.length; i++) {
                 var obj = grid.getObject(sprites.labels[airports[i]]);
-                obj.data.airport = true;  // to be used in setLabelVisisilbity()
+                obj.data.airport = true;  // to be used in setLabelVisibility()
                 obj.style.hidden = false;
             }
         }
@@ -610,6 +607,10 @@
             var grid_coords = this.getCoords(img_coords[0], img_coords[1]);
             var ids = this.addCityCircle(grid_coords, LOCATING_CIRCLE, false);
             sprites.located_cities[city_id] = ids;
+
+            // Re-set labels so that this label will definitely be shown
+            this.setLabelVisibility();
+            grid.redraw();
         }
 
         this.hideCityLocation = function(city_id) {
@@ -617,8 +618,9 @@
             for (var i=0; i<ids.length; i++) {
                 grid.removeObject(ids[i]);
             }
-            grid.redraw();
             delete sprites.located_cities[city_id];
+            this.setLabelVisibility();
+            grid.redraw();
         }
 
         /*
