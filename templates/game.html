@@ -3,21 +3,21 @@
 
 <head>
     <title>Journey Through Europe</title>
-    <link href="https://fonts.googleapis.com/css?family=VT323" rel="stylesheet">
+    <!-- <link href="https://fonts.googleapis.com/css?family=VT323" rel="stylesheet"> -->
     <style type="text/css">
 
     * {
         box-sizing: border-box;
     }
 
-    body {
+    body, button {
         font-family: "VT323", monospace;
         font-size: 1.2em;
     }
 
     button {
         padding: 6px 12px;
-        font-size: 14px;
+        font-size: 30px;
         background: white;
         border: 1px solid #ccc;
         border-radius: 4px;
@@ -147,7 +147,7 @@
 
         <div id="canvas-wrapper">
             <button id="roll-dice-button">Roll</button>
-            <img id="dice-points" width="30" height="30" />
+            <img id="dice-points" width="50" height="50" />
             <canvas id="game-canvas"></canvas>
         </div>
 
@@ -162,8 +162,8 @@
 
     <div id="right-panel"></div>
 
-    <script type="text/javascript" src="https://joesingo.github.io/grid/matrix.js"></script>
-    <script type="text/javascript" src="https://joesingo.github.io/grid/grid.js"></script>
+    <script type="text/javascript" src="/static/grid/matrix.js"></script>
+    <script type="text/javascript" src="/static/grid/grid.js"></script>
     <script type="text/javascript" src="/static/jquery-3.1.1.min.js"></script>
     <script type="text/javascript">
 
@@ -245,8 +245,9 @@
 
         var sprites = {
             "player_flags": [],
-            "cities": [],
-            "labels": []
+            "click_points": [],
+            "located_cities": {},  // indexed by city id for easy removal
+            "labels": {}  // indexed by city id also
         };
 
         // Calculate sizes of things in grid units based on size in pixels at
@@ -281,18 +282,15 @@
          * Set the font size of the city labels
          */
         this.setLabelSizes = function() {
-
-            var size = ART_SIZES.initial_label_size * canvas.width / images.map.width;
-
             var zoom_level = this.getZoomLevel();
 
-            for (var i=0; i<sprites.labels.length; i++) {
-                var obj = grid.getObject(sprites.labels[i]);
+            for (var city_id in sprites.labels) {
+                var obj = grid.getObject(sprites.labels[city_id]);
 
                 // Always show airport labels, and only show others is level is
                 // positive
-                if (obj.data.airport || zoom_level > 0) {
-                    obj.style.font_size = size;
+                if ("airport" in obj.data || zoom_level > 0) {
+                    obj.style.font_size = LABEL_SIZE;
                 }
                 else {
                     obj.style.font_size = 0;
@@ -314,10 +312,13 @@
                 var id = grid.addText(cities[i].name, grid_coords[0], grid_coords[1],
                                       "center", LABEL_STYLE);
 
-                var obj = grid.getObject(id);
-                obj.data.airport = (airports.indexOf(i) > 0);
+                sprites.labels[i] = id;
+            }
 
-                sprites.labels.push(id);
+            // Set a flag in data object for airport city labels
+            for (var i=0; i<airports.length; i++) {
+                var obj = grid.getObject(sprites.labels[airports[i]]);
+                obj.data.airport = true;
             }
 
             this.setLabelSizes();
@@ -359,8 +360,7 @@
 
         /*
          * Add a circle at the coordinates of a city. circle_style is one of
-         * LOCATING_CIRCLE or TRAVEL_CIRCLE. [border_id, inner_id] is
-         * added to sprites.cities. Return an array continaing the grid.js object
+         * LOCATING_CIRCLE or TRAVEL_CIRCLE. Return an array continaing the grid.js object
          * IDs of the shapes created
          */
         this.addCityCircle = function(coords, circle_style, airport) {
@@ -375,6 +375,10 @@
                 case TRAVEL_CIRCLE:
                     style.colour = (airport ? "red": "black")
                     break
+
+                case LOCATING_CIRCLE:
+                    style.colour = "blue";
+                    break;
             }
 
             var inner_id = grid.addCircle(
@@ -383,7 +387,6 @@
                 style
             );
 
-            sprites.cities.push([border_id, inner_id]);
             return [border_id, inner_id];
         }
 
@@ -490,8 +493,23 @@
          * Update the player's cards showing which have been visited
          */
         this.drawCards = function(status) {
-            for (var i=0; i<status.cards.length; i++) {
-                var $li = $("<li>").append(map.getCityName(status.cards[i].id));
+            for (let i=0; i<status.cards.length; i++) {
+                var $li = $("<li>").css("cursor", "pointer")
+                                   .append(map.getCityName(status.cards[i].id));
+
+                var g = this;
+
+                // Toggle city location on clicck
+                $li.on("click", function() {
+                    if ($(this).hasClass("located")) {
+                        $(this).removeClass("located");
+                        g.hideCityLocation(status.cards[i].id);
+                    }
+                    else {
+                        $(this).addClass("located");
+                        g.showCityLocation(status.cards[i].id);
+                    }
+                });
 
                 if (status.cards[i].visited) {
                     $li.addClass("visited");
@@ -529,7 +547,8 @@
 
                         var img_coords = map.getCityCoords(city_id);
                         var coords = this.getCoords(img_coords[0], img_coords[1]);
-                        this.addCityCircle(coords, TRAVEL_CIRCLE, (type == AIR_LINK));
+                        var ids = this.addCityCircle(coords, TRAVEL_CIRCLE, (type == AIR_LINK));
+                        sprites.click_points.push(ids)
 
                         if (!(city_id in click_points)) {
                             click_points[city_id] = {"coords": coords,
@@ -576,6 +595,22 @@
             return null;
         }
 
+        this.showCityLocation = function(city_id) {
+            var img_coords = map.getCityCoords(city_id);
+            var grid_coords = this.getCoords(img_coords[0], img_coords[1]);
+            var ids = this.addCityCircle(grid_coords, LOCATING_CIRCLE, false);
+            sprites.located_cities[city_id] = ids;
+        }
+
+        this.hideCityLocation = function(city_id) {
+            var ids = sprites.located_cities[city_id];
+            for (var i=0; i<ids.length; i++) {
+                grid.removeObject(ids[i]);
+            }
+            grid.redraw();
+            delete sprites.located_cities[city_id];
+        }
+
         /*
          * Clear the game canvas and update the player list, cards, and canvas
          */
@@ -587,7 +622,6 @@
                 grid.removeObject(player_flag_ids[i][1]);
             }
             player_flag_ids = [];
-            grid.redraw();
 
             // Update message log
             for (var i=0; i<status["message_log"].length; i++) {
@@ -609,11 +643,11 @@
             $("#actions-list").text("");
 
             // Remove city circles
-            for (var i=0; i<sprites.cities.length; i++) {
-                grid.removeObject(sprites.cities[i][0]);
-                grid.removeObject(sprites.cities[i][1]);
+            for (var i=0; i<sprites.click_points.length; i++) {
+                grid.removeObject(sprites.click_points[i][0]);
+                grid.removeObject(sprites.click_points[i][1]);
             }
-            sprites.cities = [];
+            sprites.click_points = [];
 
             click_points = [];
             hovered_click_point = null;
@@ -634,6 +668,8 @@
             // Show cards
             $("#card-list").text("");
             this.drawCards(status);
+
+            grid.redraw();
         }
 
         var g = this;
@@ -796,11 +832,8 @@
         "city_radius": 6,
         "city_border_width": 1,
 
-        "initial_label_size": 30,  // Font height at level 0 zoom
-        "min_label_size": 13
+        "initial_label_size": 20,  // Font height
     }
-
-    var LABEL_STYLE = {"colour": "white", "font": "VT323"};
 
     var images = {};
     images.map = new Image();
@@ -824,6 +857,9 @@
     ctx.webkitImageSmoothingEnabled = false;
     ctx.msImageSmoothingEnabled = false;
     ctx.imageSmoothingEnabled = false;
+
+    var LABEL_STYLE = {"colour": "white", "font": "VT323, monospace"};
+    var LABEL_SIZE = ART_SIZES.initial_label_size * canvas.width / images.map.width;
 
     var game;
 
