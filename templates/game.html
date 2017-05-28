@@ -3,6 +3,7 @@
 
 <head>
     <title>Journey Through Europe</title>
+    <link href="https://fonts.googleapis.com/css?family=VT323" rel="stylesheet">
     <style type="text/css">
 
     * {
@@ -10,7 +11,8 @@
     }
 
     body {
-        font-family: "Helvetica", "Arial", sans-serif;
+        font-family: "VT323", monospace;
+        font-size: 1.2em;
     }
 
     button {
@@ -130,6 +132,10 @@
     <script type="text/json" id="cities">
     {{ cities }}
     </script>
+    <script type="text/json" id="airports">
+    {{ airports }}
+    </script>
+
 
     <h1>Journey Through Europe</h1>
 
@@ -161,9 +167,10 @@
     <script type="text/javascript" src="/static/jquery-3.1.1.min.js"></script>
     <script type="text/javascript">
 
-    function Map(cities_str) {
+    function Map(cities_str, airports_str) {
 
         var cities = JSON.parse(cities_str);
+        var airports = JSON.parse(airports_str);
 
         /*
          * Throw an exception if the provided ID is invalid;
@@ -192,6 +199,17 @@
             checkCityID(i);
 
             return cities[i].coords;
+        }
+
+        /*
+         * Return the array of cities
+         */
+        this.getCities = function() {
+            return cities;
+        }
+
+        this.getAirports = function() {
+            return airports;
         }
     }
 
@@ -227,7 +245,8 @@
 
         var sprites = {
             "player_flags": [],
-            "cities": []
+            "cities": [],
+            "labels": []
         };
 
         // Calculate sizes of things in grid units based on size in pixels at
@@ -237,6 +256,9 @@
             sizes[i] = ART_SIZES[i] * fullscreen_ratio * canvas.width / images.map.width;
         }
 
+        // Keep track of zooming for hiding/displaying non-airport city labels
+        var zoom_factor = 1;
+
         /*
          * Convert coordinates in px relative to the map image to grid
          * coordinates
@@ -244,6 +266,61 @@
         this.getCoords = function(img_x, img_y) {
             return [map_width * img_x / images.map.width,
                     map_height * (1 - img_y) / images.map.height];
+        }
+
+        /*
+         * Return how many times the zoom level has increased by a factor of
+         * ZOOM_THRESHOLD. e.g. if the threshold is 2 then zoom level increases
+         * at x2, x4, x8 zoom etc...
+         */
+        this.getZoomLevel = function() {
+            return Math.floor(Math.log(zoom_factor) / Math.log(ZOOM_THRESHOLD));
+        }
+
+        /*
+         * Set the font size of the city labels
+         */
+        this.setLabelSizes = function() {
+
+            var size = ART_SIZES.initial_label_size * canvas.width / images.map.width;
+
+            var zoom_level = this.getZoomLevel();
+
+            for (var i=0; i<sprites.labels.length; i++) {
+                var obj = grid.getObject(sprites.labels[i]);
+
+                // Always show airport labels, and only show others is level is
+                // positive
+                if (obj.data.airport || zoom_level > 0) {
+                    obj.style.font_size = size;
+                }
+                else {
+                    obj.style.font_size = 0;
+                }
+            }
+            grid.redraw();
+        }
+
+        /*
+         * Add a text label for each city
+         */
+        this.addLabels = function() {
+            var cities = map.getCities();
+            var airports = map.getAirports();
+
+            for (var i=0; i<cities.length; i++) {
+                var grid_coords = this.getCoords(cities[i].coords[0], cities[i].coords[1]);
+                grid_coords[1] += 1.5 * sizes.city_radius;
+                var id = grid.addText(cities[i].name, grid_coords[0], grid_coords[1],
+                                      "center", LABEL_STYLE);
+
+                var obj = grid.getObject(id);
+                obj.data.airport = (airports.indexOf(i) > 0);
+
+                sprites.labels.push(id);
+            }
+
+            this.setLabelSizes();
         }
 
         /*
@@ -529,7 +606,6 @@
                 }
             }
 
-
             $("#actions-list").text("");
 
             // Remove city circles
@@ -609,8 +685,23 @@
                 // Reset cursor once clicked
                 document.body.style.cursor = "default";
             }
-        })
+        });
 
+        /*
+         * Add callback function to grid zooming to redraw labels when zoom level
+         * changes
+         */
+        grid.settings.zoom.callback = function(zoom, x, y) {
+            var current_level = g.getZoomLevel();
+            zoom_factor *= 1 + zoom;
+            var new_level = g.getZoomLevel();
+
+            if (new_level != current_level) {
+                g.setLabelSizes();
+            }
+        }
+
+        this.addLabels();
     }
 
     /*
@@ -689,6 +780,8 @@
 
     const COLOURS = ["#AA3939", "#226666", "#AA8439"];
 
+    const ZOOM_THRESHOLD = 2.2;
+
     var STATUS_URL = window.location.pathname + "status/";
     var ACTION_URL = window.location.pathname + "action/";
 
@@ -701,16 +794,23 @@
         "flag_size": 15,
 
         "city_radius": 6,
-        "city_border_width": 1
+        "city_border_width": 1,
+
+        "initial_label_size": 30,  // Font height at level 0 zoom
+        "min_label_size": 13
     }
+
+    var LABEL_STYLE = {"colour": "white", "font": "VT323"};
 
     var images = {};
     images.map = new Image();
     images.map.src = "{{ url_for("static", filename="europe.png") }}";
 
     var cities_str = document.getElementById("cities").innerHTML;
+    var airports_str = document.getElementById("airports").innerHTML;
     cities_str = cities_str.replace(/&#34;/g, '"');
-    var map = new Map(cities_str);
+    airports_str = airports_str.replace(/&#34;/g, '"');
+    var map = new Map(cities_str, airports_str);
 
     var latest_timestamp = 1.1;
 

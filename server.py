@@ -116,7 +116,8 @@ def play_game(game_id):
     username = get_username(game_id)
 
     return render_template("game.html", username=username,
-                           cities=json.dumps(game.game_map["cities"]))
+                           cities=json.dumps(game.game_map["cities"]),
+                           airports=json.dumps(game.game_map["airports"]))
 
 
 @app.route("/play/<int:game_id>/status/<float:timestamp>/")
