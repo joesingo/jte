@@ -279,24 +279,30 @@
         }
 
         /*
-         * Set the font size of the city labels
+         * Hide/unhide labels depending on the zoom level and whether the city
+         * is an airport
          */
-        this.setLabelSizes = function() {
+        this.setLabelVisibility = function() {
             var zoom_level = this.getZoomLevel();
 
-            for (var city_id in sprites.labels) {
-                var obj = grid.getObject(sprites.labels[city_id]);
-
-                // Always show airport labels, and only show others is level is
-                // positive
-                if ("airport" in obj.data || zoom_level > 0) {
-                    obj.style.font_size = LABEL_SIZE;
-                }
-                else {
-                    obj.style.font_size = 0;
+            // Show everything if level is positive (i.e. zoomed in)
+            if (zoom_level > 0) {
+                for (var city_id in sprites.labels) {
+                    var obj = grid.getObject(sprites.labels[city_id]);
+                    obj.style.hidden = false;
                 }
             }
-            grid.redraw();
+
+            // Otherwise only show airports
+            else {
+                for (var city_id in sprites.labels) {
+                    var obj = grid.getObject(sprites.labels[city_id]);
+
+                    if (!("airport" in obj.data)) {
+                        obj.style.hidden = true;
+                    }
+                }
+            }
         }
 
         /*
@@ -313,15 +319,19 @@
                                       "center", LABEL_STYLE);
 
                 sprites.labels[i] = id;
+
+                // Initially hide everything since only airport labels will be
+                // shown
+                var obj = grid.getObject(id);
+                obj.style.hidden = true;
             }
 
-            // Set a flag in data object for airport city labels
+            // Show airport labels
             for (var i=0; i<airports.length; i++) {
                 var obj = grid.getObject(sprites.labels[airports[i]]);
-                obj.data.airport = true;
+                obj.data.airport = true;  // to be used in setLabelVisisilbity()
+                obj.style.hidden = false;
             }
-
-            this.setLabelSizes();
         }
 
         /*
@@ -728,12 +738,13 @@
          * changes
          */
         grid.settings.zoom.callback = function(zoom, x, y) {
-            var current_level = g.getZoomLevel();
+            var prev_level = g.getZoomLevel();
             zoom_factor *= 1 + zoom;
             var new_level = g.getZoomLevel();
 
-            if (new_level != current_level) {
-                g.setLabelSizes();
+            // If there has been a sign change in the level...
+            if (Math.sign(prev_level) != Math.sign(new_level)) {
+                g.setLabelVisibility();
             }
         }
 
@@ -832,7 +843,7 @@
         "city_radius": 6,
         "city_border_width": 1,
 
-        "initial_label_size": 20,  // Font height
+        "initial_label_size": 30,  // Font height
     }
 
     var images = {};
@@ -858,8 +869,11 @@
     ctx.msImageSmoothingEnabled = false;
     ctx.imageSmoothingEnabled = false;
 
-    var LABEL_STYLE = {"colour": "white", "font": "VT323, monospace"};
-    var LABEL_SIZE = ART_SIZES.initial_label_size * canvas.width / images.map.width;
+    var LABEL_STYLE = {
+        "colour": "white",
+        "font": "VT323, monospace",
+        "font_size": ART_SIZES.initial_label_size * canvas.width / images.map.width
+    };
 
     var game;
 
