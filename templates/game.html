@@ -312,7 +312,7 @@
             for (var i=0; i<cities.length; i++) {
                 var grid_coords = this.getCoords(cities[i].coords[0], cities[i].coords[1]);
                 grid_coords[1] += 1.5 * sizes.city_radius;
-                var id = grid.addText(cities[i].name, grid_coords[0], grid_coords[1],
+                var id = grid.addText(cities[i].name.toUpperCase(), grid_coords[0], grid_coords[1],
                                       "center", LABEL_STYLE);
 
                 sprites.labels[i] = id;
@@ -554,7 +554,8 @@
 
                         var img_coords = map.getCityCoords(city_id);
                         var coords = this.getCoords(img_coords[0], img_coords[1]);
-                        var ids = this.addCityCircle(coords, TRAVEL_CIRCLE, (type == AIR_LINK));
+                        var airport = (map.getAirports().indexOf(city_id) >= 0);
+                        var ids = this.addCityCircle(coords, TRAVEL_CIRCLE, airport);
                         sprites.click_points.push(ids)
 
                         if (!(city_id in click_points)) {
