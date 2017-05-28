@@ -112,8 +112,15 @@
         margin-bottom: 10px;
     }
 
-    img {
+    #canvas-wrapper {
+        position: relative;
+    }
+
+    #roll-dice-button, #dice-points {
         display: none;
+        position: absolute;
+        top: 3px;
+        right: 3px;
     }
 
     </style>
@@ -132,7 +139,11 @@
         <ol id="player-list"></ol>
         <ol id="actions-list"></ol>
 
-        <canvas id="game-canvas"></canvas>
+        <div id="canvas-wrapper">
+            <button id="roll-dice-button">Roll</button>
+            <img id="dice-points" width="30" height="30" />
+            <canvas id="game-canvas"></canvas>
+        </div>
 
         <ol id="card-list"></ol>
     </div>
@@ -144,7 +155,6 @@
     </div>
 
     <div id="right-panel"></div>
-
 
     <script type="text/javascript" src="https://joesingo.github.io/grid/matrix.js"></script>
     <script type="text/javascript" src="https://joesingo.github.io/grid/grid.js"></script>
@@ -259,7 +269,9 @@
             points.push([x, y]);
 
             var id = grid.addShape(points, {"colour": colour, "fill": true});
-            sprites.player_flags.push(id);
+            var id2 = grid.addShape(points, {"colour": "white", "fill": false,
+                                             "line_width": 2});
+            sprites.player_flags.push([id, id2]);
         }
 
         /*
@@ -296,7 +308,8 @@
         this.drawPlayers = function(status) {
 
             for (var i=0; i<sprites.player_flags.length; i++) {
-                grid.removeObject(sprites.player_flags[i]);
+                grid.removeObject(sprites.player_flags[i][0]);
+                grid.removeObject(sprites.player_flags[i][1]);
             }
             sprites.player_flags = [];
             grid.redraw();
@@ -339,23 +352,6 @@
         }
 
         /*
-         * Add a button in the message log that the player can click to perform
-         * an action in the game
-         */
-        this.addButton = function(text, action_id) {
-            var $button = $("<button>", {
-                "text": text
-            });
-            $button.on("click",
-                function() {
-                    performAction(action_id);
-                }
-            );
-            var $p = $("<p>", {"class": "message"}).append($button);
-            $("#right-panel").append($p);
-        }
-
-        /*
          * Show the available actions to the user
          */
         this.drawActions = function(status) {
@@ -365,7 +361,14 @@
                 switch (status.actions[i].type) {
                     case ROLL_DICE_ACTION:
                         description = "Roll dice";
-                        this.addButton(description, status.actions[i].id);
+
+                        // Show button, remove previous click handlers, and add
+                        // new click handler to perform action
+                        $("#roll-dice-button").show().off("click")
+                                              .on("click",function() {
+                            performAction(status.actions[i].id);
+                            $(this).hide();
+                        });
                         break;
 
                     case TRAVEL_ACTION:
@@ -405,7 +408,7 @@
                 );
                 var $item = $("<li>");
                 $item.append($link);
-                $("#actions-list").append($item);
+                // $("#actions-list").append($item);
             }
         }
 
@@ -434,11 +437,13 @@
 
             // Remove any previous player flags
             for (var i=0; i<player_flag_ids.length; i++) {
-                grid.removeObject(player_flag_ids[i]);
+                grid.removeObject(player_flag_ids[i][0]);
+                grid.removeObject(player_flag_ids[i][1]);
             }
             player_flag_ids = [];
             grid.redraw();
 
+            // Update message log
             for (var i=0; i<status["message_log"].length; i++) {
                 var msg = status["message_log"][i];
 
@@ -458,24 +463,24 @@
 
             $("#actions-list").text("");
 
-            // Remove buttons in the message log
-            $("#right-panel button").parent().remove();
-
             // Remove city circles
             for (var i=0; i<sprites.cities.length; i++) {
-                // Inner loop since city is made of multiple circles (border and
-                // inside)
-                for (var j=0; j<sprites.cities[i].length; j++) {
-                    grid.removeObject(sprites.cities[i][j]);
-                }
+                grid.removeObject(sprites.cities[i][0]);
+                grid.removeObject(sprites.cities[i][1]);
             }
             sprites.cities = [];
 
             click_points = [];
             hovered_click_point = null;
 
+            $("#dice-points").hide();
+
             if ("actions" in status) {
                 this.drawActions(status);
+
+                if (status.dice_points) {
+                    $("#dice-points").prop("src", `/static/dice/${status.dice_points}.png`).show();
+                }
             }
 
             $("#player-list").text("");
@@ -628,6 +633,13 @@
     var canvas = $("#game-canvas")[0];
     canvas.width = $("#left-panel").width();
     canvas.height = canvas.width * images.map.height / images.map.width;
+
+    // Disable image smoothing so that map is not blurry when zoomed in
+    var ctx = canvas.getContext("2d");
+    ctx.mozImageSmoothingEnabled = false;
+    ctx.webkitImageSmoothingEnabled = false;
+    ctx.msImageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = false;
 
     var game;
 
