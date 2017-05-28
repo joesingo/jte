@@ -228,17 +228,9 @@
 
         // Calculate sizes of things in grid units based on size in pixels at
         // fullscreen zoom level
-        var sizes = {
-            "flags": {
-                "pole_width": 6 * fullscreen_ratio,
-                "pole_height": 30 * fullscreen_ratio,
-                "flag_size": 15 * fullscreen_ratio
-            },
-
-            "cities": {
-                "radius": 5 * fullscreen_ratio,
-                "border_width": 1 * fullscreen_ratio
-            }
+        var sizes = {}
+        for (var i in ART_SIZES) {
+            sizes[i] = ART_SIZES[i] * fullscreen_ratio * canvas.width / images.map.width;
         }
 
         /*
@@ -252,18 +244,18 @@
                                map_height * (1 - img_coords[1]) / images.map.height];
 
             var points = [];
-            var x = grid_coords[0] - 0.5*sizes.flags.pole_width;
+            var x = grid_coords[0] - 0.5*sizes.flagpole_width;
             var y = grid_coords[1];
             points.push([x, y]);
-            y += sizes.flags.pole_height;
+            y += sizes.flagpole_height;
             points.push([x, y]);
-            x += sizes.flags.pole_width;
+            x += sizes.flagpole_width;
             points.push([x, y]);
-            x += sizes.flags.flag_size;
+            x += sizes.flag_size;
             points.push([x, y]);
-            y -= sizes.flags.flag_size;
+            y -= sizes.flag_size;
             points.push([x, y]);
-            x -= sizes.flags.flag_size;
+            x -= sizes.flag_size;
             points.push([x, y]);
             y = grid_coords[1];
             points.push([x, y]);
@@ -282,7 +274,7 @@
         this.addCityCircle = function(coords, circle_style, airport) {
             var border_style = {"colour": "white", "fill": true};
             var border_id = grid.addCircle(coords[0], coords[1],
-                                           sizes.cities.radius,
+                                           sizes.city_radius,
                                            border_style);
 
             var style = {"fill": true};
@@ -295,7 +287,7 @@
 
             var inner_id = grid.addCircle(
                 coords[0], coords[1],
-                sizes.cities.radius - sizes.cities.border_width,
+                sizes.city_radius - sizes.city_border_width,
                 style
             );
 
@@ -422,7 +414,7 @@
                 var cy = click_points[i].coords[1];
                 var distance = Math.sqrt(Math.pow(x - cx, 2) + Math.pow(y - cy, 2));
 
-                if (distance <= sizes.cities.radius) {
+                if (distance <= sizes.city_radius) {
                     return click_points[i];
                 }
             }
@@ -619,6 +611,18 @@
 
     var STATUS_URL = window.location.pathname + "status/";
     var ACTION_URL = window.location.pathname + "action/";
+
+    // Sizes of art assets in px relative to the size of the map image file.
+    // This is needed so that the assets can be drawn at the correct relative size
+    // regardless of zoom level and canvas size
+    var ART_SIZES = {
+        "flagpole_width": 6,
+        "flagpole_height": 30,
+        "flag_size": 15,
+
+        "city_radius": 6,
+        "city_border_width": 1
+    }
 
     var images = {};
     images.map = new Image();
