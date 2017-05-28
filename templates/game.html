@@ -199,6 +199,10 @@
 
         var map = game_map;
 
+        // Store name, city_id pairs so that we can animate player movement
+        // when city changes
+        var player_locations = {};
+
         var grid = new Grid(canvas);
 
         grid.settings.background_colour = "black";
@@ -234,14 +238,23 @@
         }
 
         /*
+         * Convert coordinates in px relative to the map image to grid
+         * coordinates
+         */
+        this.getCoords = function(img_x, img_y) {
+            return [map_width * img_x / images.map.width,
+                    map_height * (1 - img_y) / images.map.height];
+        }
+
+        /*
          * Add a player flag to the grid and add the object ID to the
-         * sprites.player_flags
+         * sprites.player_flags. Return an array continaing the grid.js object
+         * IDs of the shapes created
          */
         this.addPlayerFlag = function(name, colour, city) {
 
             var img_coords = map.getCityCoords(city);
-            var grid_coords = [map_width * img_coords[0] / images.map.width,
-                               map_height * (1 - img_coords[1]) / images.map.height];
+            var grid_coords = this.getCoords(img_coords[0], img_coords[1]);
 
             var points = [];
             var x = grid_coords[0] - 0.5*sizes.flagpole_width;
@@ -264,12 +277,14 @@
             var id2 = grid.addShape(points, {"colour": "white", "fill": false,
                                              "line_width": 2});
             sprites.player_flags.push([id, id2]);
+            return [id, id2];
         }
 
         /*
          * Add a circle at the coordinates of a city. circle_style is one of
          * LOCATING_CIRCLE or TRAVEL_CIRCLE. [border_id, inner_id] is
-         * added to sprites.cities
+         * added to sprites.cities. Return an array continaing the grid.js object
+         * IDs of the shapes created
          */
         this.addCityCircle = function(coords, circle_style, airport) {
             var border_style = {"colour": "white", "fill": true};
@@ -292,6 +307,37 @@
             );
 
             sprites.cities.push([border_id, inner_id]);
+            return [border_id, inner_id];
+        }
+
+        /*
+         * Return the step function to animate moving grid.js shapes along the
+         * direction vector provided. It is assumed that the animation will be
+         * run with the parameter going from 0 to 1
+         */
+        this.animateShapes = function(object_ids, direction) {
+            var initial_coords = [];
+            for (var i=0; i<object_ids.length; i++) {
+                var obj = grid.getObject(object_ids[i]);
+                initial_coords.push([]);
+
+                for (var j=0; j<obj.data.points.length; j++) {
+                    initial_coords[i].push(obj.data.points[j]);
+                }
+            }
+
+            return function(t) {
+                for (var i=0; i<object_ids.length; i++) {
+                    var obj = grid.getObject(object_ids[i]);
+
+                    for (var j=0; j<obj.data.points.length; j++) {
+                        obj.data.points[j] = [
+                            initial_coords[i][j][0] + t * direction[0],
+                            initial_coords[i][j][1] + t * direction[1]
+                        ];
+                    }
+                }
+            };
         }
 
         /*
@@ -299,6 +345,7 @@
          */
         this.drawPlayers = function(status) {
 
+            // Remove all previous flags
             for (var i=0; i<sprites.player_flags.length; i++) {
                 grid.removeObject(sprites.player_flags[i][0]);
                 grid.removeObject(sprites.player_flags[i][1]);
@@ -323,8 +370,42 @@
                 $item.append($name_span, "<br />", text);
                 $("#player-list").append($item);
 
-                this.addPlayerFlag(status.players[i].name, COLOURS[i],
-                                   status.players[i].current_city);
+                // See if this player was in a different city previously so that
+                // we can animate the movement
+                var animating = false;
+                if (status.players[i].name in player_locations &&
+                    player_locations[status.players[i].name] != status.players[i].current_city)
+                {
+                    animating = true;
+
+                    // Add a flag at the PREVIOUS city
+                    var prev_city = player_locations[status.players[i].name];
+                    var ids = this.addPlayerFlag(status.players[i].name,
+                                                 COLOURS[i], prev_city);
+
+                    // Calculate the start and target coordinates and
+                    // direction vector
+                    var s_img_coords = map.getCityCoords(prev_city);
+                    var t_img_coords = map.getCityCoords(status.players[i].current_city);
+                    var s_coords = this.getCoords(s_img_coords[0], s_img_coords[1]);
+                    var t_coords = this.getCoords(t_img_coords[0], t_img_coords[1]);
+                    var direction = [t_coords[0] - s_coords[0],
+                                     t_coords[1] - s_coords[1]];
+
+                    grid.runAnimation(this.animateShapes(ids, direction), 0, 1,
+                                      1 / ANIMATION_TIME);
+                }
+
+                if (!animating) {
+                    this.addPlayerFlag(status.players[i].name, COLOURS[i],
+                                       status.players[i].current_city);
+                }
+            }
+
+            // Update player_locations
+            player_locations = {};
+            for (var i=0; i<status.players.length; i++) {
+                player_locations[status.players[i].name] = status.players[i].current_city;
             }
         }
 
@@ -370,11 +451,7 @@
                         description = `Travel to ${city_name} via ${type}`;
 
                         var img_coords = map.getCityCoords(city_id);
-                        var coords = [
-                            map_width * img_coords[0] / images.map.width,
-                            map_height * (1 - img_coords[1]) / images.map.height
-                        ];
-
+                        var coords = this.getCoords(img_coords[0], img_coords[1]);
                         this.addCityCircle(coords, TRAVEL_CIRCLE, (type == AIR_LINK));
 
                         if (!(city_id in click_points)) {
@@ -602,6 +679,9 @@
     const LAND_LINK = "land";
     const SEA_LINK = "sea";
     const AIR_LINK = "air";
+
+    // The length of the player movement animation in seconds
+    const ANIMATION_TIME = 0.7;
 
     // The different styles of circles at cities
     const LOCATING_CIRCLE = "locating";
