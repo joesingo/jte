@@ -111,7 +111,7 @@ class Game(object):
     """An object to represent an actual game"""
 
     # The number of cards each player is dealt at the start of the game
-    STARTING_CITIES = 3
+    STARTING_CITIES = 9
 
     # Constants to represent the actions players are allowed to perform
     ROLL_DICE_ACTION = "roll_dice"

@@ -15,6 +15,10 @@
         font-size: 1.2em;
     }
 
+    h1 {
+        text-align: center;
+    }
+
     button {
         padding: 6px 12px;
         font-size: 30px;
@@ -37,6 +41,7 @@
     #right-panel {
         float: right;
         width: 30%;
+        overflow-y: auto;
     }
 
     #player-list, #card-list {
@@ -669,6 +674,8 @@
                     $("#right-panel").append($msg_p);
                 }
             }
+            // Scroll to the bottom of the log
+            $("#right-panel")[0].scrollTop = $("#right-panel")[0].scrollHeight;
 
             // Remove city circles
             for (var i=0; i<sprites.click_points.length; i++) {
@@ -698,6 +705,12 @@
             this.drawCards(status);
 
             grid.redraw();
+
+            // Set the height of the message log area on the first update
+            if ($("#right-panel").is(":hidden")) {
+                console.log("first time");
+                $("#right-panel").height($("#left-panel").height()).show();
+            }
         }
 
         var g = this;
@@ -880,12 +893,18 @@
     canvas.width = $("#left-panel").width();
     canvas.height = canvas.width * images.map.height / images.map.width;
 
-    // Stop canvas from being too tall (725px is arbitrary - need to come up
-    // with a better solution!)
+    // TODO: Determine whether canvas is too tall AFTER PLAYERS AND CARDS are
+    // shown, then re-calculate so that game fills entire height of the page
+    // This will do for now though
     if (canvas.height > 725) {
         canvas.height = 725;
         canvas.width = canvas.height * images.map.width / images.map.height;
     }
+
+    // Hide right panel where message log appears so that we can tell in the
+    // first call to updateDisplay() and set it to be the same height as the
+    // left panel
+    $("#right-panel").hide();
 
     // Disable image smoothing so that map is not blurry when zoomed in
     var ctx = canvas.getContext("2d");
