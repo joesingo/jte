@@ -220,6 +220,8 @@
         // Store name, city_id pairs so that we can animate player movement
         // when city changes
         var player_locations = {};
+        // Store an animation queue for each player, indexed by name
+        var player_animations = {};
 
         var grid = new Grid(canvas);
 
@@ -240,11 +242,8 @@
 
         var hovered_click_point = null;
 
-        // grid object IDs for the player flags
-        var player_flag_ids = [];
-
         var sprites = {
-            "player_flags": [],
+            "player_flags": {},  // indexed by player name
             "click_points": [],
             "located_cities": {},  // indexed by city id for easy removal
             "labels": {}  // indexed by city id also
@@ -361,7 +360,7 @@
             var id = grid.addShape(points, {"colour": colour, "fill": true});
             var id2 = grid.addShape(points, {"colour": "white", "fill": false,
                                              "line_width": 2});
-            sprites.player_flags.push([id, id2]);
+            sprites.player_flags[name] = [id, id2];
             return [id, id2];
         }
 
@@ -398,11 +397,15 @@
         }
 
         /*
-         * Return the step function to animate moving grid.js shapes along the
+         * Return the step function to animate a player flag moving along the
          * direction vector provided. It is assumed that the animation will be
-         * run with the parameter going from 0 to 1
+         * run with the parameter going from 0 to 1. When the animation finished
+         * the next one in the queue is run (if there is one)
          */
-        this.animateShapes = function(object_ids, direction) {
+        this.flagAnimationStepFunction = function(player_name, object_ids, direction) {
+
+            // Store the starting coordinates of each point in each shape in the
+            // flag
             var initial_coords = [];
             for (var i=0; i<object_ids.length; i++) {
                 var obj = grid.getObject(object_ids[i]);
@@ -412,6 +415,8 @@
                     initial_coords[i].push(obj.data.points[j]);
                 }
             }
+
+            var g = this;
 
             return function(t) {
                 for (var i=0; i<object_ids.length; i++) {
@@ -424,21 +429,49 @@
                         ];
                     }
                 }
+
+                // If at the end of this animation, remove animation from queue
+                // and run next one
+                if (t == 1) {
+                    player_animations[player_name].shift();  // remove 1st element
+
+                    if (player_animations[player_name].length > 0) {
+                        g.runNextAnimation(player_name);
+                    }
+                }
             };
+        }
+
+        /*
+         * Start the next animation in the queue for the specified player
+         */
+        this.runNextAnimation = function(player_name) {
+
+            var d = player_animations[player_name][0];
+
+            // Remove any current flags belonging to this player
+            grid.removeObject(sprites.player_flags[player_name][0]);
+            grid.removeObject(sprites.player_flags[player_name][1]);
+
+            // Add a flag at the 'from' city
+            var ids = this.addPlayerFlag(player_name, d.colour, d.from);
+
+            // Calculate the 'from' and 'to' coordinates and direction vector
+            var f_img_coords = map.getCityCoords(d.from);
+            var t_img_coords = map.getCityCoords(d.to);
+            var f_coords = this.getCoords(f_img_coords[0], f_img_coords[1]);
+            var t_coords = this.getCoords(t_img_coords[0], t_img_coords[1]);
+            var direction = [t_coords[0] - f_coords[0],
+                             t_coords[1] - f_coords[1]];
+
+            grid.runAnimation(this.flagAnimationStepFunction(player_name, ids, direction), 0, 1,
+                              1 / ANIMATION_TIME);
         }
 
         /*
          * Update the player list and draw flags on the canvas
          */
         this.drawPlayers = function(status) {
-
-            // Remove all previous flags
-            for (var i=0; i<sprites.player_flags.length; i++) {
-                grid.removeObject(sprites.player_flags[i][0]);
-                grid.removeObject(sprites.player_flags[i][1]);
-            }
-            sprites.player_flags = [];
-            grid.redraw();
 
             for (var i=0; i<status.players.length; i++) {
 
@@ -457,35 +490,31 @@
                 $item.append($name_span, "<br />", text);
                 $("#player-list").append($item);
 
-                // See if this player was in a different city previously so that
-                // we can animate the movement
-                var animating = false;
-                if (status.players[i].name in player_locations &&
-                    player_locations[status.players[i].name] != status.players[i].current_city)
-                {
-                    animating = true;
-
-                    // Add a flag at the PREVIOUS city
-                    var prev_city = player_locations[status.players[i].name];
-                    var ids = this.addPlayerFlag(status.players[i].name,
-                                                 COLOURS[i], prev_city);
-
-                    // Calculate the start and target coordinates and
-                    // direction vector
-                    var s_img_coords = map.getCityCoords(prev_city);
-                    var t_img_coords = map.getCityCoords(status.players[i].current_city);
-                    var s_coords = this.getCoords(s_img_coords[0], s_img_coords[1]);
-                    var t_coords = this.getCoords(t_img_coords[0], t_img_coords[1]);
-                    var direction = [t_coords[0] - s_coords[0],
-                                     t_coords[1] - s_coords[1]];
-
-                    grid.runAnimation(this.animateShapes(ids, direction), 0, 1,
-                                      1 / ANIMATION_TIME);
-                }
-
-                if (!animating) {
+                // Draw player flag if they were not drawn previously
+                if (!(status.players[i].name in player_locations)) {
                     this.addPlayerFlag(status.players[i].name, COLOURS[i],
                                        status.players[i].current_city);
+                }
+                // If player was drawn previously but in a different city, then
+                // animate the movement
+                else if (player_locations[status.players[i].name] != status.players[i].current_city)
+                {
+                    if (!(status.players[i].name in player_animations)) {
+                        player_animations[status.players[i].name] = [];
+                    }
+
+                    // Add animation to queue
+                    player_animations[status.players[i].name].push({
+                        "from": player_locations[status.players[i].name],
+                        "to": status.players[i].current_city,
+                        "colour": COLOURS[i]
+                    });
+
+                    // If we have just put the only animation in the queue then
+                    // it can be run straight away
+                    if (player_animations[status.players[i].name].length == 1) {
+                        this.runNextAnimation(status.players[i].name);
+                    }
                 }
             }
 
@@ -494,6 +523,17 @@
             for (var i=0; i<status.players.length; i++) {
                 player_locations[status.players[i].name] = status.players[i].current_city;
             }
+
+            // Remove any flags for players no longer in the game
+            for (var name in sprites.player_flags) {
+                if (!(name in player_locations)) {
+                    grid.removeObject(sprites.player_flags[name][0]);
+                    grid.removeObject(sprites.player_flags[name][1]);
+
+                    delete sprites.player_flags[name];
+                }
+            }
+            grid.redraw();
         }
 
         /*
@@ -628,13 +668,6 @@
          * Clear the game canvas and update the player list, cards, and canvas
          */
         this.updateDisplay = function(status) {
-
-            // Remove any previous player flags
-            for (var i=0; i<player_flag_ids.length; i++) {
-                grid.removeObject(player_flag_ids[i][0]);
-                grid.removeObject(player_flag_ids[i][1]);
-            }
-            player_flag_ids = [];
 
             // Update message log
             for (var i=0; i<status["message_log"].length; i++) {
