@@ -310,7 +310,10 @@ class Game(object):
             visited_all = (list(set(p.cities) - set(p.cities_visited))
                            == [p.home_city])
 
-            if link["to_city"] != p.home_city or visited_all:
+            already_visited = link["to_city"] in self.current_player.cities_visited
+
+            if not already_visited and (link["to_city"] != p.home_city or visited_all):
+
                 msg = "{} got a city".format(self.current_player.name)
                 self.message_log.add(msg)
 
