@@ -75,6 +75,7 @@ class MessageLog(object):
             "timestamp": time.time()
         }
         self.ptr = (self.ptr + 1) % MessageLog.MAX_MESSAGES
+        time.sleep(0.05)
 
     def get_list(self):
         """Return a list of the messages in the log in order (oldest first)"""
