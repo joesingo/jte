@@ -308,8 +308,8 @@
          * ZOOM_THRESHOLD. e.g. if the threshold is 2 then zoom level increases
          * at x2, x4, x8 zoom etc...
          */
-        this.getZoomLevel = function() {
-            return Math.floor(Math.log(zoom_factor) / Math.log(ZOOM_THRESHOLD));
+        this.getZoomLevel = function(z_factor) {
+            return Math.floor(Math.log(z_factor) / Math.log(ZOOM_THRESHOLD));
         }
 
         /*
@@ -317,7 +317,7 @@
          * is an airport or being located
          */
         this.setLabelVisibility = function() {
-            var zoom_level = this.getZoomLevel();
+            var zoom_level = this.getZoomLevel(zoom_factor);
 
             for (var city_id in sprites.labels) {
                 var obj = grid.getObject(sprites.labels[city_id]);
@@ -832,15 +832,23 @@
          * changes
          */
         grid.settings.zoom.callback = function(zoom, x, y) {
-            var prev_level = g.getZoomLevel();
+            var prev_level = g.getZoomLevel(zoom_factor);
+            var new_level = g.getZoomLevel(zoom_factor * (1 + zoom));
+
+            // Prevent zooming too far out or in
+            if (new_level < -1 || new_level > 2) {
+                return false;
+            }
+
             zoom_factor *= 1 + zoom;
-            var new_level = g.getZoomLevel();
 
             // Re-calculate which labels to show if there has been a change in
             // level
             if (prev_level != new_level) {
                 g.setLabelVisibility();
             }
+
+            return true;
         }
 
         this.addLabels();
