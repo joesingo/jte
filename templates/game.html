@@ -322,9 +322,10 @@
             for (var city_id in sprites.labels) {
                 var obj = grid.getObject(sprites.labels[city_id]);
 
-                // Show label if zoomed in or city is airport or being located
-                if (zoom_level > 0 || "airport" in obj.data ||
-                    city_id in sprites.located_cities)
+                // Show all located cities, airport is zoom level > 0, and all
+                // cities if zoom level > 1
+                if (city_id in sprites.located_cities ||
+                    ("airport" in obj.data && zoom_level > 0) || zoom_level > 1)
                 {
                     obj.style.hidden = false;
                 }
@@ -357,11 +358,11 @@
                 obj.style.hidden = true;
             }
 
-            // Show airport labels
+            // Set a flag in airport objects so they can be recognised in
+            // setLabelVisibility()
             for (var i=0; i<airports.length; i++) {
                 var obj = grid.getObject(sprites.labels[airports[i]]);
-                obj.data.airport = true;  // to be used in setLabelVisibility()
-                obj.style.hidden = false;
+                obj.data.airport = true;
             }
         }
 
@@ -835,8 +836,9 @@
             zoom_factor *= 1 + zoom;
             var new_level = g.getZoomLevel();
 
-            // If there has been a sign change in the level...
-            if (Math.sign(prev_level) != Math.sign(new_level)) {
+            // Re-calculate which labels to show if there has been a change in
+            // level
+            if (prev_level != new_level) {
                 g.setLabelVisibility();
             }
         }
