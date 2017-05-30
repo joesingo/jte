@@ -610,29 +610,24 @@
          * Update the player's cards showing which have been visited
          */
         this.drawCards = function(status) {
+            // Remove previous city markers
+            for (var city_id in sprites.located_cities) {
+                this.hideCityLocation(city_id);
+            }
+
             for (let i=0; i<status.cards.length; i++) {
-                var $li = $("<li>").css("cursor", "pointer")
-                                   .append(map.getCityName(status.cards[i].id));
-
-                var g = this;
-
-                // Toggle city location on clicck
-                $li.on("click", function() {
-                    if ($(this).hasClass("located")) {
-                        $(this).removeClass("located");
-                        g.hideCityLocation(status.cards[i].id);
-                    }
-                    else {
-                        $(this).addClass("located");
-                        g.showCityLocation(status.cards[i].id);
-                    }
-                });
+                var $li = $("<li>").append(map.getCityName(status.cards[i].id));
 
                 if (status.cards[i].visited) {
                     $li.addClass("visited");
                 }
+                // Show location on the map if not already visited
+                else {
+                    this.showCityLocation(status.cards[i].id);
+                }
 
                 $("#card-list").append($li);
+
             }
         }
 
@@ -754,6 +749,10 @@
             click_points = [];
             hovered_click_point = null;
 
+            // Show cards
+            $("#card-list").text("");
+            this.drawCards(status);
+
             $("#dice-points").hide();
 
             if ("actions" in status) {
@@ -766,10 +765,6 @@
 
             $("#player-list").text("");
             this.drawPlayers(status);
-
-            // Show cards
-            $("#card-list").text("");
-            this.drawCards(status);
 
             grid.redraw();
 
