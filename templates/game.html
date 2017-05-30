@@ -400,33 +400,68 @@
         }
 
         /*
-         * Add a circle at the coordinates of a city. circle_style is one of
-         * LOCATING_CIRCLE or TRAVEL_CIRCLE. Return an array continaing the grid.js object
+         * Add a marker at the coordinates of a city. marker_style is one of
+         * LOCATING_MARKER or TRAVEL_MARKER. Return an array continaing the grid.js object
          * IDs of the shapes created
          */
-        this.addCityCircle = function(coords, circle_style, airport) {
+        this.addCityMarker = function(coords, marker_style, airport) {
             var border_style = {"colour": "white", "fill": true};
-            var border_id = grid.addCircle(coords[0], coords[1],
-                                           sizes.city_radius,
-                                           border_style);
+            var border_id;
+            var inner_id;
 
             var style = {"fill": true};
 
-            switch (circle_style) {
-                case TRAVEL_CIRCLE:
+            switch (marker_style) {
+                case TRAVEL_MARKER:
+                    border_id = grid.addCircle(coords[0], coords[1], sizes.city_radius,
+                                               border_style);
+
                     style.colour = (airport ? "red": "black")
+                    inner_id = grid.addCircle(coords[0], coords[1],
+                                              sizes.city_radius - sizes.city_border_width,
+                                              style);
                     break
 
-                case LOCATING_CIRCLE:
-                    style.colour = "blue";
+                case LOCATING_MARKER:
+                    style.colour = "yellow";
+
+                    // m is how many times bigger to draw locating marker
+                    // compared to travel marker
+                    var m = 2.7;
+                    // Number of sides of the star
+                    var sides = 5;
+                    var points = [[], []];
+
+                    for (var j=0; j<2; j++) {
+                        var r1 = sizes.city_radius * m;
+
+                        if (j == 1) {
+                            r1 -= sizes.city_border_width * m;
+                        }
+
+                        var r2 = 0.5 * r1;
+
+                        for (var i=0; i<2*sides; i++) {
+                            // Outer points of star are on a circle radius r1
+                            var angle1 = 0.5 * Math.PI + i * 2 * Math.PI / sides;
+                            // Inner points are on a circle radius 2 and angle is
+                            // offset by half the change in angle1
+                            var angle2 = angle1 + Math.PI / sides;
+                            points[j].push([
+                                coords[0] + r1 * Math.cos(angle1),
+                                coords[1] + r1 * Math.sin(angle1)]);
+
+                            points[j].push([
+                                coords[0] + r2 * Math.cos(angle2),
+                                coords[1] + r2 * Math.sin(angle2)]);
+                        }
+                    }
+
+                    border_id = grid.addShape(points[0], border_style);
+                    inner_id = grid.addShape(points[1], style);
+
                     break;
             }
-
-            var inner_id = grid.addCircle(
-                coords[0], coords[1],
-                sizes.city_radius - sizes.city_border_width,
-                style
-            );
 
             return [border_id, inner_id];
         }
@@ -626,7 +661,7 @@
                         var img_coords = map.getCityCoords(city_id);
                         var coords = this.getCoords(img_coords[0], img_coords[1]);
                         var airport = (map.getAirports().indexOf(city_id) >= 0);
-                        var ids = this.addCityCircle(coords, TRAVEL_CIRCLE, airport);
+                        var ids = this.addCityMarker(coords, TRAVEL_MARKER, airport);
                         sprites.click_points.push(ids)
 
                         if (!(city_id in click_points)) {
@@ -667,7 +702,7 @@
         this.showCityLocation = function(city_id) {
             var img_coords = map.getCityCoords(city_id);
             var grid_coords = this.getCoords(img_coords[0], img_coords[1]);
-            var ids = this.addCityCircle(grid_coords, LOCATING_CIRCLE, false);
+            var ids = this.addCityMarker(grid_coords, LOCATING_MARKER, false);
             sprites.located_cities[city_id] = ids;
 
             // Re-set labels so that this label will definitely be shown
@@ -930,8 +965,8 @@
     const ANIMATION_TIME = 0.7;
 
     // The different styles of circles at cities
-    const LOCATING_CIRCLE = "locating";
-    const TRAVEL_CIRCLE = "travlel";
+    const LOCATING_MARKER = "locating";
+    const TRAVEL_MARKER = "travlel";
 
     const COLOURS = ["#AA3939", "#226666", "#AA8439"];
 
