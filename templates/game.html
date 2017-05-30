@@ -740,7 +740,8 @@
 
             // Set the height of the message log area on the first update
             if ($("#right-panel").is(":hidden")) {
-                $("#right-panel").height($("#left-panel").height()).show();
+                var h = $("#left-panel").height() - $("#card-list").height();
+                $("#right-panel").height(h).show();
             }
         }
 
