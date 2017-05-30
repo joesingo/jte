@@ -303,6 +303,8 @@ class Game(object):
         self.current_player.current_city = link["to_city"]
         self.current_turn.cities.append(link["to_city"])
 
+        end_turn = False
+
         if link["to_city"] in self.current_player.cities:
             p = self.current_player
 
@@ -320,6 +322,10 @@ class Game(object):
 
                 self.current_player.cities_visited.append(link["to_city"])
 
+                # End turn when reaching a city - strictly this is not part of
+                # the rules of the game but it's how me and Ivan play it...
+                end_turn = True
+
         self.win_check()
 
         if self.in_progress:
@@ -336,6 +342,9 @@ class Game(object):
             # End turn now if all dice points are used up
             if self.current_turn.dice_points == 0:
                 self.next_player()
+
+        if end_turn:
+            self.next_player()
 
     def get_city_name(self, city_id):
         return self.game_map["cities"][city_id]["name"]
