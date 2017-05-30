@@ -10,6 +10,14 @@
         box-sizing: border-box;
     }
 
+    html, body {
+        height: 100%;
+    }
+
+    body, h1 {
+        margin: 0;
+    }
+
     body, button {
         font-family: "VT323", monospace;
         font-size: 1.2em;
@@ -17,31 +25,34 @@
 
     h1 {
         text-align: center;
-    }
-
-    button {
-        padding: 6px 12px;
-        font-size: 30px;
-        background: white;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-    }
-
-    button:hover {
-        background: #e6e6e6;
-        cursor: pointer;
+        padding: 20px;
+        height: 10%;  /* Match with #left-panel height */
     }
 
     #left-panel {
         float: left;
-        width: 70%;
-        text-align: center;
+        width: 80%;   /* Match with #right-panel width */
+        height: 90%;  /* Match with h1 height */
+        position: relative;
     }
 
     #right-panel {
         float: right;
-        width: 30%;
+        width: 20%;  /* Match with #right-panel width */
         overflow-y: auto;
+    }
+
+    #canvas-wrapper {
+        display: inline-block;
+        position: absolute;
+
+        /* top and bottom are set in JS */
+        top: 0;
+        bottom: 0;
+    }
+
+    #game-canvas {
+        position: relative;
     }
 
     #player-list, #card-list {
@@ -55,6 +66,11 @@
         color: white;
     }
 
+    #card-list {
+        position: absolute;
+        bottom: 0;
+    }
+
     #player-list li, #card-list li {
         text-align: center;
         display: table-cell;
@@ -63,6 +79,7 @@
 
     #card-list li {
         border: 1px solid black;
+        background: white;
     }
 
     #card-list li.visited {
@@ -117,16 +134,27 @@
         margin-bottom: 10px;
     }
 
-    #canvas-wrapper {
-        display: inline-block;
-        position: relative;
-    }
-
     #roll-dice-button, #dice-points {
         display: none;
         position: absolute;
-        top: 3px;
-        right: 3px;
+        z-index: 50;
+
+        /* top and right are set in JS to be aligned with canvas */
+        top: 0;
+        right: 0;
+    }
+
+    button {
+        padding: 6px 12px;
+        font-size: 30px;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+
+    button:hover {
+        background: #e6e6e6;
+        cursor: pointer;
     }
 
     </style>
@@ -146,7 +174,9 @@
     <!-- <code id="debug-area"></code> -->
 
     <div id="left-panel">
-        <ol id="player-list"></ol>
+        <ol id="player-list">
+            <li><span class="player-name">Loading...</span><br />...</li>
+        </ol>
 
         <span id="canvas-wrapper">
             <button id="roll-dice-button">Roll</button>
@@ -154,7 +184,9 @@
             <canvas id="game-canvas"></canvas>
         </span>
 
-        <ol id="card-list"></ol>
+        <ol id="card-list">
+            <li>Loading...</li>
+        </ol>
     </div>
 
     <div id="gray-screen"></div>
@@ -708,7 +740,6 @@
 
             // Set the height of the message log area on the first update
             if ($("#right-panel").is(":hidden")) {
-                console.log("first time");
                 $("#right-panel").height($("#left-panel").height()).show();
             }
         }
@@ -839,6 +870,51 @@
         });
     }
 
+    /*
+     * Set the size and position of the provided canvas to maintain aspect ratio
+     * of map image and fill width or height of available space
+     */
+    function setCanvasSize(canvas) {
+
+        // Position canvas wrapper between players and card list, taking up all
+        // vertical space
+        $("#canvas-wrapper").css({
+            "top": $("#player-list").height(),
+            "bottom": $("#card-list").height()
+        });
+
+        // Set canvas to size 0 so it does not affect #left-panel size
+        canvas.width = 0;
+        canvas.height = 0;
+
+        var max_width = $("#left-panel").width();
+        var max_height = $("#canvas-wrapper").height();
+
+        // Fill all available width and set height to maintain aspect ratio
+        canvas.width = max_width;
+        canvas.height = images.map.height * canvas.width / images.map.width;
+
+        // If canvas height exceeds the height of the left panel then fit the
+        // height exactly instead
+        if (canvas.height > max_height) {
+            canvas.height = max_height;
+            canvas.width = images.map.width * canvas.height / images.map.height;
+        }
+
+        // Center the canvas
+        var top_px = 0.5 * (max_height - canvas.height);
+        var left_px = 0.5 * (max_width - canvas.width);
+
+        canvas.style.top = top_px + "px";
+        canvas.style.left = left_px + "px";
+
+        // Position dice over canvas
+        $("#roll-dice-button, #dice-points").css({
+            "top": 3 + top_px,
+            "right": 3 - left_px
+        });
+    }
+
     const UPDATE_INTERVAL = 1000;
 
     const ROLL_DICE_ACTION = "roll_dice";
@@ -890,16 +966,7 @@
     var latest_timestamp = 1.1;
 
     var canvas = $("#game-canvas")[0];
-    canvas.width = $("#left-panel").width();
-    canvas.height = canvas.width * images.map.height / images.map.width;
-
-    // TODO: Determine whether canvas is too tall AFTER PLAYERS AND CARDS are
-    // shown, then re-calculate so that game fills entire height of the page
-    // This will do for now though
-    if (canvas.height > 725) {
-        canvas.height = 725;
-        canvas.width = canvas.height * images.map.width / images.map.height;
-    }
+    setCanvasSize(canvas);
 
     // Hide right panel where message log appears so that we can tell in the
     // first call to updateDisplay() and set it to be the same height as the
