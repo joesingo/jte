@@ -1,0 +1,15 @@
+body {
+    font-family: "VT323", monospace;
+}
+
+button {
+    padding: 6px 12px;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+button:hover {
+    background: #e6e6e6;
+    cursor: pointer;
+}

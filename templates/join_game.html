@@ -1,18 +1,25 @@
-<!DOCTYPE html>
-<html>
+{% extends "base.html" %}
 
-<head>
-    <title>Join game</title>
+{% block title %}
+    Join game
+{% endblock %}
+
+{% block extrahead %}
     <style type="text/css">
+
+    body {
+        text-align: center;
+    }
 
     .error {
         color: red;
+
     }
 
     </style>
-</head>
+{% endblock %}
 
-<body>
+{% block body %}
     <h1>Join</h1>
 
     <form id="join-form">
@@ -99,6 +106,4 @@
     })
 
     </script>
-</body>
-
-</html>
+{% endblock %}

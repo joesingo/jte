@@ -1,20 +1,22 @@
-<!DOCTYPE html>
-<html>
+{% extends "base.html" %}
 
-<head>
-    <title>Create game</title>
+{% block title %}
+    Create game
+{% endblock %}
+
+{% block extrahead %}
     <style type="text/css">
-
+        body {
+            text-align: center;
+        }
     </style>
-</head>
+{% endblock %}
 
-<body>
+{% block body %}
     <h1>Create Game</h1>
 
     <form action="/create/" method="POST">
         <input type="number" name="no_of_players" placeholder="Number of players" />
         <button>Create</button>
     </form>
-</body>
-
-</html>
+{% endblock %}

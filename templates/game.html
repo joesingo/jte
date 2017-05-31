@@ -1,20 +1,20 @@
-<!DOCTYPE html>
-<html>
+{% extends "base.html" %}
 
-<head>
-    <title>Journey Through Europe</title>
-    <link href="https://fonts.googleapis.com/css?family=VT323" rel="stylesheet">
+{% block title %}
+    Journey Through Europe
+{% endblock %}
+
+{% block extrahead %}
     <link href="/static/game-style.css" rel="stylesheet">
-</head>
+{% endblock %}
 
-<body>
+{% block body %}
     <script type="text/json" id="cities">
     {{ cities }}
     </script>
     <script type="text/json" id="airports">
     {{ airports }}
     </script>
-
 
     <h1>Journey Through Europe</h1>
 
@@ -57,6 +57,4 @@
     <script type="text/javascript" src="https://joesingo.github.io/grid/grid.js"></script>
     <script type="text/javascript" src="/static/jquery-3.1.1.min.js"></script>
     <script type="text/javascript" src="/static/game.js?j={{ random_num }}"></script>
-</body>
-
-</html>
+{% endblock %}
