@@ -77,7 +77,8 @@ function Game(game_map, canvas) {
         "player_flags": {},  // indexed by player name
         "click_points": [],
         "located_cities": {},  // indexed by city id for easy removal
-        "labels": {}  // indexed by city id also
+        "labels": {},  // indexed by city id also,
+        "flight_plan": null
     };
 
     // Calculate sizes of things in grid units based on size in pixels at
@@ -430,6 +431,10 @@ function Game(game_map, canvas) {
      * Show the available actions to the user
      */
     this.drawActions = function(status) {
+        // Keep track of whether there are any air links so we can draw the
+        // flight plan if so
+        var air_link = false;
+
         for (let i=0; i<status.actions.length; i++) {
 
             switch (status.actions[i].type) {
@@ -462,12 +467,21 @@ function Game(game_map, canvas) {
                         "id": status.actions[i].id,
                         "link_type": type
                     });
+
+                    if (type == AIR_LINK) {
+                        air_link = true;
+                    }
                     break;
 
                 case WAIT_AT_PORT_ACTION:
                     // TODO: Implement waiting at port
                     break;
             }
+        }
+
+        if (air_link) {
+            sprites.flight_plan = grid.addImage(images.flight_plan, 0, 0, map_width,
+                                                map_height);
         }
     }
 
@@ -548,6 +562,12 @@ function Game(game_map, canvas) {
         }
         // Scroll to the bottom of the log
         $("#right-panel")[0].scrollTop = $("#right-panel")[0].scrollHeight;
+
+        // Remove flight plan
+        if (sprites.flight_plan) {
+            grid.removeObject(sprites.flight_plan);
+            sprites.flight_plan = null;
+        }
 
         // Remove city circles
         for (var i=0; i<sprites.click_points.length; i++) {
@@ -828,6 +848,9 @@ var images = {};
 images.map = new Image();
 images.map.src = "/static/europe.png";
 
+images.flight_plan = new Image();
+images.flight_plan.src = "/static/flight-plan.png";
+
 var cities_str = document.getElementById("cities").innerHTML;
 var airports_str = document.getElementById("airports").innerHTML;
 cities_str = cities_str.replace(/&#34;/g, '"');
@@ -856,7 +879,7 @@ var LABEL_STYLE = {
 
 var game;
 
-images.map.onload = function() {
+function start_game() {
     setCanvasSize(canvas);
 
     // Disable image smoothing so that map is not blurry when zoomed in
@@ -872,4 +895,16 @@ images.map.onload = function() {
     // Get the status and start the update loop
     getStatus();
     window.setInterval(getStatus, UPDATE_INTERVAL);
+}
+
+// Don't start game until all images are loaded
+var loaded_images = 0;
+for (let i in images) {
+    images[i].onload = function() {
+        loaded_images++;
+
+        if (loaded_images == Object.keys(images).length) {
+            start_game();
+        }
+    }
 }
