@@ -1,0 +1,150 @@
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+}
+
+body, h1 {
+    margin: 0;
+}
+
+body, button {
+    font-family: "VT323", monospace;
+    font-size: 1.2em;
+}
+
+h1 {
+    text-align: center;
+    padding: 20px;
+    height: 10%;  /* Match with #left-panel height */
+}
+
+#left-panel {
+    float: left;
+    width: 80%;   /* Match with #right-panel width */
+    height: 90%;  /* Match with h1 height */
+    position: relative;
+}
+
+#right-panel {
+    float: right;
+    width: 20%;  /* Match with #right-panel width */
+    overflow-y: auto;
+}
+
+#canvas-wrapper {
+    display: inline-block;
+    position: absolute;
+
+    /* top and bottom are set in JS */
+    top: 0;
+    bottom: 0;
+}
+
+#game-canvas {
+    position: relative;
+}
+
+#player-list, #card-list {
+    display: table;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+}
+
+#player-list {
+    color: white;
+}
+
+#card-list {
+    position: absolute;
+    bottom: 0;
+}
+
+#player-list li, #card-list li {
+    text-align: center;
+    display: table-cell;
+    padding: 20px;
+}
+
+#card-list li {
+    border: 1px solid black;
+    background: white;
+}
+
+#card-list li.visited {
+    background: #bbb;
+}
+
+.player-name {
+    font-size: 1.2em;
+}
+
+.current-player {
+    font-weight: bold;
+}
+
+#right-panel .message {
+    margin: 8px;
+    border-bottom: 1px solid #555;
+}
+
+.popup {
+    display: none;
+    position: fixed;
+    width: 400px;
+    top: 200px;
+    left: 50%;
+    margin-left: -200px;
+    border: 3px solid black;
+    background: #ddd;
+    padding: 40px;
+    text-align: center;
+    z-index: 101;
+}
+
+#gray-screen {
+    display: none;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    opacity: 0.5;
+    background: gray;
+    z-index: 100;
+}
+
+#action-choice-popup ul {
+    padding-left: 0;
+}
+
+#action-choice-popup li {
+    list-style: none;
+    margin-bottom: 10px;
+}
+
+#roll-dice-button, #dice-points {
+    display: none;
+    position: absolute;
+    z-index: 50;
+
+    /* top and right are set in JS to be aligned with canvas */
+    top: 0;
+    right: 0;
+}
+
+button {
+    padding: 6px 12px;
+    font-size: 30px;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+button:hover {
+    background: #e6e6e6;
+    cursor: pointer;
+}
