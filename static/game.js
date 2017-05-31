@@ -474,7 +474,11 @@ function Game(game_map, canvas) {
                     break;
 
                 case WAIT_AT_PORT_ACTION:
-                    // TODO: Implement waiting at port
+                    $("#wait-at-port-button").show().off("click")
+                                             .on("click", function() {
+                        performAction(status.actions[i].id);
+                        $(this).hide();
+                    })
                     break;
             }
         }
@@ -583,7 +587,7 @@ function Game(game_map, canvas) {
         $("#card-list").text("");
         this.drawCards(status);
 
-        $("#dice-points").hide();
+        $("#buttons-bar").children().hide();
 
         if ("actions" in status) {
             this.drawActions(status);
@@ -786,7 +790,7 @@ function setCanvasSize(canvas) {
     canvas.style.left = left_px + "px";
 
     // Position dice over canvas
-    $("#roll-dice-button, #dice-points").css({
+    $("#buttons-bar").css({
         "top": 3 + top_px,
         "right": 3 - left_px
     });

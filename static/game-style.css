@@ -126,14 +126,23 @@ h1 {
     margin-bottom: 10px;
 }
 
-#roll-dice-button, #dice-points {
-    display: none;
+#buttons-bar {
     position: absolute;
     z-index: 50;
 
     /* top and right are set in JS to be aligned with canvas */
     top: 0;
     right: 0;
+
+    text-align: right;
+}
+
+#buttons-bar * {
+    display: none;
+}
+
+#buttons-bar img {
+    vertical-align: top;
 }
 
 button {
