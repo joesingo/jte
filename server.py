@@ -1,6 +1,7 @@
 import os
 import random
 import json
+import random
 
 from flask import Flask, render_template, request, redirect, abort, session
 
@@ -117,7 +118,8 @@ def play_game(game_id):
 
     return render_template("game.html", username=username,
                            cities=json.dumps(game.game_map["cities"]),
-                           airports=json.dumps(game.game_map["airports"]))
+                           airports=json.dumps(game.game_map["airports"]),
+                           random_num=random.randint(1,100))
 
 
 @app.route("/play/<int:game_id>/status/<float:timestamp>/")
