@@ -41,7 +41,7 @@ def create_game_post():
 
     try:
         players = int(request.form["no_of_players"])
-    except ValueError, KeyError:
+    except (ValueError, KeyError):
         abort(400)
 
     matchmakers[game_id] = Matchmaker(players, soton_map)
@@ -143,7 +143,7 @@ def perform_action(game_id):
 
     try:
         action_id = int(request.form["action_id"])
-    except KeyError, ValueError:
+    except (KeyError, ValueError):
         abort(400)
 
     game.perform_action(action_id, username)
