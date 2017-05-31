@@ -186,9 +186,11 @@ class Game(object):
             })
 
         # Allow waiting at port if player is at a sea port with dice points
-        # remaining
+        # remaining, but not at the start of their turn
         at_port = self.current_player.current_city in self.sea_ports
-        if at_port and self.current_turn.dice_points is not None:
+        if (at_port and self.current_turn.dice_points is not None and
+            self.current_turn.dice_points != self.current_turn.dice_roll):
+
             actions.append({"type": Game.WAIT_AT_PORT_ACTION})
 
         # Add IDs to each action
