@@ -577,7 +577,6 @@ function Game(game_map, canvas) {
      * Clear the game canvas and update the player list, cards, and canvas
      */
     this.updateDisplay = function(status) {
-
         if (!status.in_progress) {
             $("#end-game-popup b").text(status.winner);
             showPopup("end-game-popup");
@@ -622,8 +621,6 @@ function Game(game_map, canvas) {
         $("#card-list").text("");
         this.drawCards(status);
 
-        $("#buttons-bar").children().hide();
-
         if ("actions" in status) {
             this.drawActions(status);
 
@@ -649,6 +646,8 @@ function Game(game_map, canvas) {
             $("#right-panel").height(h).show();
             canvas.style.display = "inline";
         }
+
+        $("#loading-gif").hide();
     }
 
     var g = this;
@@ -758,7 +757,10 @@ function hidePopup(id) {
  * status if the request is successful
  */
 function performAction(action_id) {
-    $("#action-list").text("Loading...");
+    // Hide buttons and show loading gif
+    $("#buttons-bar").children().hide();
+    $("#loading-gif").show();
+
     $.ajax(ACTION_URL, {
         "method": "POST",
         "data": {
