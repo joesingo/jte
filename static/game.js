@@ -73,6 +73,10 @@ function Game(game_map, canvas) {
 
     var hovered_click_point = null;
 
+    // Currently pressed keys - indexed by key code
+    var keys = {};
+    var keyboard_check_timestamp = null;
+
     var sprites = {
         "player_flags": {},  // indexed by player name
         "click_points": [],
@@ -539,6 +543,37 @@ function Game(game_map, canvas) {
     }
 
     /*
+     * Check which keys are currently pressed and perform the appropriate actions
+     */
+    this.keyboardCheckLoop = function(timestamp) {
+        if (keyboard_check_timestamp === null) {
+            keyboard_check_timestamp = timestamp;
+        }
+
+        var dt = (timestamp - keyboard_check_timestamp) / 1000;
+
+        // Work out speed per second in GRID UNITS
+        var speed = SCROLL_SPEED * grid.getUnitsToPx();
+
+        if ("d" in keys) {
+            grid.translate(-speed * dt, 0);
+        }
+        else if ("a" in keys) {
+            grid.translate(speed * dt, 0);
+        }
+
+        if ("w" in keys) {
+            grid.translate(0, -speed * dt);
+        }
+        else if ("s" in keys) {
+            grid.translate(0, speed * dt);
+        }
+
+        keyboard_check_timestamp = timestamp;
+        window.requestAnimationFrame(g.keyboardCheckLoop);
+    }
+
+    /*
      * Clear the game canvas and update the player list, cards, and canvas
      */
     this.updateDisplay = function(status) {
@@ -667,6 +702,16 @@ function Game(game_map, canvas) {
         }
     });
 
+    // Add event listeners to keep track of which keys are currently pressed
+    window.addEventListener("keydown", function(e) {
+        var key = e.key.toLowerCase();
+        keys[key] = true;
+    });
+    window.addEventListener("keyup", function(e) {
+        var key = e.key.toLowerCase();
+        delete keys[key];
+    });
+
     /*
      * Add callback function to grid zooming to redraw labels when zoom level
      * changes
@@ -692,6 +737,7 @@ function Game(game_map, canvas) {
     }
 
     this.addLabels();
+    this.keyboardCheckLoop(0);
 }
 
 /*
@@ -830,6 +876,9 @@ MARKER_COLOURS.airport = {
 const COLOURS = ["#AA3939", "#226666", "#AA8439"];
 
 const ZOOM_THRESHOLD = 2.2;
+
+// Speed in px/sec for scrolling the map with WASD keys
+const SCROLL_SPEED = 600;
 
 var STATUS_URL = window.location.pathname + "status/";
 var ACTION_URL = window.location.pathname + "action/";
