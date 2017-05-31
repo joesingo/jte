@@ -893,8 +893,8 @@ var ART_SIZES = {
     "flagpole_height": 30,
     "flag_size": 15,
 
-    "city_radius": 6,
-    "city_border_width": 1,
+    "city_radius": 8,
+    "city_border_width": 3,
 
     "initial_label_size": 30,  // Font height
 }
