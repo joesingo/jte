@@ -358,8 +358,8 @@ class Game(object):
             if self.current_turn.dice_points == 0:
                 self.next_player()
 
-        if end_turn:
-            self.next_player()
+            elif end_turn:
+                self.next_player()
 
     def get_city_name(self, city_id):
         return self.game_map["cities"][city_id]["name"]
