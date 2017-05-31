@@ -92,6 +92,7 @@ class Player(object):
         self.home_city = home_city
         self.cities_visited = []
         self.current_city = self.home_city
+        self.waiting_at_port = False
 
 
 class Turn(object):
@@ -177,7 +178,7 @@ class Game(object):
 
         actions = []
 
-        if self.current_turn.dice_points is None:
+        if self.current_turn.dice_points is None and not self.current_player.waiting_at_port:
             actions.append({"type": Game.ROLL_DICE_ACTION})
 
         for link in self.get_links():
@@ -221,7 +222,11 @@ class Game(object):
         elif action["type"] == Game.TRAVEL_ACTION:
             self.travel_to(action["link"])
 
+            if self.current_player.waiting_at_port:
+                self.current_player.waiting_at_port = False
+
         elif action["type"] == Game.WAIT_AT_PORT_ACTION:
+            self.current_player.waiting_at_port = True
             self.next_player()
 
         # Recalculate available actions
