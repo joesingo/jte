@@ -135,6 +135,7 @@ class Game(object):
 
         self.player_queue = CircularQueue(self.players)
         self.current_player = None
+        self.winner = None
         self.available_actions = None
         self.status = None
         self.message_log = MessageLog()
@@ -357,6 +358,7 @@ class Game(object):
     def end_game(self, winner):
         self.in_progress = False
         self.message_log.add("{} has won!".format(winner.name))
+        self.winner = winner.name
 
     def get_status(self, username):
         """Return the status as set in update_status(). username is the name of the user
@@ -385,6 +387,7 @@ class Game(object):
         """
         self.status = {
             "in_progress": self.in_progress,
+            "winner": None if self.in_progress else self.winner,
             "current_player": self.current_player.name,
             "dice_roll": self.current_turn.dice_roll,
             "dice_points": self.current_turn.dice_points,

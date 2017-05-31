@@ -525,6 +525,11 @@ function Game(game_map, canvas) {
      */
     this.updateDisplay = function(status) {
 
+        if (!status.in_progress) {
+            $("#end-game-popup b").text(status.winner);
+            showPopup("end-game-popup");
+        }
+
         // Update message log
         for (var i=0; i<status["message_log"].length; i++) {
             var msg = status["message_log"][i];
@@ -832,7 +837,6 @@ var map = new Map(cities_str, airports_str);
 var latest_timestamp = 1.1;
 
 var canvas = $("#game-canvas")[0];
-setCanvasSize(canvas);
 // Hide canvas until first update to avoid seeing things labels before they
 // are hidden etc...
 canvas.style.display = "none";
@@ -842,22 +846,27 @@ canvas.style.display = "none";
 // left panel
 $("#right-panel").hide();
 
-// Disable image smoothing so that map is not blurry when zoomed in
 var ctx = canvas.getContext("2d");
-ctx.mozImageSmoothingEnabled = false;
-ctx.webkitImageSmoothingEnabled = false;
-ctx.msImageSmoothingEnabled = false;
-ctx.imageSmoothingEnabled = false;
 
 var LABEL_STYLE = {
     "colour": "white",
     "font": "VT323, monospace",
-    "font_size": ART_SIZES.initial_label_size * canvas.width / images.map.width
+    "font_size": null  // This is set once the map image loads
 };
 
 var game;
 
 images.map.onload = function() {
+    setCanvasSize(canvas);
+
+    // Disable image smoothing so that map is not blurry when zoomed in
+    ctx.mozImageSmoothingEnabled = false;
+    ctx.webkitImageSmoothingEnabled = false;
+    ctx.msImageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = false;
+
+    LABEL_STYLE.font_size = ART_SIZES.initial_label_size * canvas.width / images.map.width;
+
     game = new Game(map, canvas);
 
     // Get the status and start the update loop
