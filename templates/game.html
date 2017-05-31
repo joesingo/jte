@@ -406,26 +406,25 @@
          * IDs of the shapes created
          */
         this.addCityMarker = function(coords, marker_style, airport) {
-            var border_style = {"colour": "white", "fill": true};
             var border_id;
             var inner_id;
 
-            var style = {"fill": true};
+            var c = MARKER_COLOURS[(airport ? "airport" : marker_style)];
+            var border_style = {"colour": c.border, "fill": true};
+            var inner_style = {"colour": c.inner, "fill": true};
+            console.log(border_style);
 
             switch (marker_style) {
                 case TRAVEL_MARKER:
                     border_id = grid.addCircle(coords[0], coords[1], sizes.city_radius,
                                                border_style);
 
-                    style.colour = (airport ? "red": "black")
                     inner_id = grid.addCircle(coords[0], coords[1],
                                               sizes.city_radius - sizes.city_border_width,
-                                              style);
+                                              inner_style);
                     break
 
                 case LOCATING_MARKER:
-                    style.colour = "yellow";
-
                     // m is how many times bigger to draw locating marker
                     // compared to travel marker
                     var m = 2.7;
@@ -459,7 +458,7 @@
                     }
 
                     border_id = grid.addShape(points[0], border_style);
-                    inner_id = grid.addShape(points[1], style);
+                    inner_id = grid.addShape(points[1], inner_style);
 
                     break;
             }
@@ -695,6 +694,16 @@
             return null;
         }
 
+        /*
+         * Remove and re-add the grid object with the specified ID, and return
+         * the new ID (this is used to put this object lower in the draw order)
+         */
+        this.reAddObject = function(id) {
+            var obj = grid.getObject(id);
+            grid.removeObject(id);
+            return grid.addObject(obj.type, obj.data, obj.style);
+        }
+
         this.showCityLocation = function(city_id) {
             var img_coords = map.getCityCoords(city_id);
             var grid_coords = this.getCoords(img_coords[0], img_coords[1]);
@@ -767,12 +776,19 @@
             $("#player-list").text("");
             this.drawPlayers(status);
 
+            // Re-add labels so they are not hidden behind city markers or flags
+            for (var city_name in sprites.labels) {
+                sprites.labels[city_name] = this.reAddObject(sprites.labels[city_name]);
+            }
+
             grid.redraw();
 
-            // Set the height of the message log area on the first update
+            // Show canvas and set the height of the message log area on the
+            // first update
             if ($("#right-panel").is(":hidden")) {
                 var h = $("#left-panel").height() - $("#card-list").height();
                 $("#right-panel").height(h).show();
+                canvas.style.display = "inline";
             }
         }
 
@@ -973,6 +989,20 @@
     const LOCATING_MARKER = "locating";
     const TRAVEL_MARKER = "travlel";
 
+    var MARKER_COLOURS = {};
+    MARKER_COLOURS[LOCATING_MARKER] = {
+        "border": "black",
+        "inner": "yellow"
+    }
+    MARKER_COLOURS[TRAVEL_MARKER] = {
+        "border": "white",
+        "inner": "black"
+    }
+    MARKER_COLOURS.airport = {
+        "border": "white",
+        "inner": "red"
+    }
+
     const COLOURS = ["#AA3939", "#226666", "#AA8439"];
 
     const ZOOM_THRESHOLD = 2.2;
@@ -1008,6 +1038,9 @@
 
     var canvas = $("#game-canvas")[0];
     setCanvasSize(canvas);
+    // Hide canvas until first update to avoid seeing things labels before they
+    // are hidden etc...
+    canvas.style.display = "none";
 
     // Hide right panel where message log appears so that we can tell in the
     // first call to updateDisplay() and set it to be the same height as the
