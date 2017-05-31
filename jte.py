@@ -123,6 +123,15 @@ class Game(object):
         """Create players and deal cards"""
         self.in_progress = True
         self.game_map = game_map
+
+        # Build a list of sea ports
+        self.sea_ports = []
+        for link in self.game_map["links"]:
+            if link["type"] == LinkTypes.SEA.value:
+                self.sea_ports.append(link["cities"][0])
+                self.sea_ports.append(link["cities"][1])
+        self.sea_ports = set(self.sea_ports)
+
         self.players = []
 
         city_ids = list(range(len(self.game_map["cities"])))
@@ -171,16 +180,14 @@ class Game(object):
         if self.current_turn.dice_points is None:
             actions.append({"type": Game.ROLL_DICE_ACTION})
 
-        at_port = False
-
         for link in self.get_links():
             actions.append({
                 "type": Game.TRAVEL_ACTION, "link": link
             })
 
-            if link["type"] == LinkTypes.SEA.value:
-                at_port = True
-
+        # Allow waiting at port if player is at a sea port with dice points
+        # remaining
+        at_port = self.current_player.current_city in self.sea_ports
         if at_port and self.current_turn.dice_points is not None:
             actions.append({"type": Game.WAIT_AT_PORT_ACTION})
 
