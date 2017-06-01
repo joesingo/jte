@@ -220,10 +220,11 @@ class Game(object):
             self.roll_dice()
 
         elif action["type"] == Game.TRAVEL_ACTION:
-            self.travel_to(action["link"])
 
             if self.current_player.waiting_at_port:
                 self.current_player.waiting_at_port = False
+
+            self.travel_to(action["link"])
 
         elif action["type"] == Game.WAIT_AT_PORT_ACTION:
             self.current_player.waiting_at_port = True
