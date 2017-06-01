@@ -385,9 +385,7 @@ class Game(object):
         # Put this player's cards in top level in the status dict
         for p in status["players"]:
             if p["name"] == username:
-                status["cards"] = p["cards"]
-
-            del p["cards"]
+                status["my_cards"] = p["cards"]
 
         # Only show actions if it is that player's turn
         if username != self.current_player.name:

@@ -56,6 +56,36 @@ h1 {
 
 #player-list {
     color: white;
+    border-collapse: collapse;
+}
+
+#player-list > li {
+    position: relative;
+}
+
+#player-list > li, .opponent-city-list {
+    border: 2px solid black;
+}
+
+.opponent-city-list {
+    display: none;  /* Set to block when player <li> is hovered */
+    background: inherit;
+    border-top-width: 0;
+    position: absolute;
+    top: 100%;
+    z-index: 60;
+    padding: 0 0 10px 0;
+
+    left: -2px;  /* Match with border width of #player-list > li */
+    right: -2px;
+}
+
+#player-list > li:hover .opponent-city-list {
+    display: block;
+}
+
+.opponent-city-list li {
+    list-style: none;
 }
 
 #card-list {
@@ -63,10 +93,14 @@ h1 {
     bottom: 0;
 }
 
-#player-list li, #card-list li {
+#player-list > li, #card-list li {
     text-align: center;
     display: table-cell;
     padding: 20px;
+}
+
+li.visited {
+    text-decoration: line-through;
 }
 
 #card-list li {

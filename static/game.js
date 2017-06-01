@@ -358,6 +358,22 @@ function Game(game_map, canvas) {
 
             var $item = $("<li>", {"css": {"background": COLOURS[i]}});
             $item.append($name_span, "<br />", text);
+
+            // Make a list of player'c cities
+            var $city_list = $("<ul>").addClass("opponent-city-list");
+            for (var j=0; j<status.players[i].cards.length; j++) {
+                var city_name = map.getCityName(status.players[i].cards[j].id);
+                var $li = $("<li>").text(city_name);
+
+                if (status.players[i].cards[j].visited) {
+                    $li.addClass("visited");
+                }
+
+                $city_list.append($li);
+            }
+
+            $item.append($city_list);
+
             $("#player-list").append($item);
 
             // Draw player flag if they were not drawn previously
@@ -415,15 +431,15 @@ function Game(game_map, canvas) {
             this.hideCityLocation(city_id);
         }
 
-        for (let i=0; i<status.cards.length; i++) {
-            var $li = $("<li>").append(map.getCityName(status.cards[i].id));
+        for (let i=0; i<status.my_cards.length; i++) {
+            var $li = $("<li>").append(map.getCityName(status.my_cards[i].id));
 
-            if (status.cards[i].visited) {
+            if (status.my_cards[i].visited) {
                 $li.addClass("visited");
             }
             // Show location on the map if not already visited
             else {
-                this.showCityLocation(status.cards[i].id);
+                this.showCityLocation(status.my_cards[i].id);
             }
 
             $("#card-list").append($li);
