@@ -167,16 +167,28 @@ li.visited {
     /* top and right are set in JS to be aligned with canvas */
     top: 0;
     right: 0;
-
-    text-align: right;
 }
 
-#buttons-bar * {
+#buttons-bar .actions * {
     display: none;
 }
 
 #buttons-bar img {
     vertical-align: top;
+}
+
+#buttons-bar span:first-child {
+    float: left;
+}
+
+#buttons-bar span:last-child {
+    float: right;
+}
+
+#flight-plan-button {
+    background-image: url("/static/plane-icon.png");
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 button {

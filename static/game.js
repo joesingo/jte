@@ -504,8 +504,7 @@ function Game(game_map, canvas) {
         }
 
         if (air_link) {
-            sprites.flight_plan = grid.addImage(images.flight_plan, 0, 0, map_width,
-                                                map_height);
+            this.showFlightPlan();
         }
     }
 
@@ -556,6 +555,21 @@ function Game(game_map, canvas) {
         delete sprites.located_cities[city_id];
         this.setLabelVisibility();
         grid.redraw();
+    }
+
+    this.showFlightPlan = function() {
+        if (sprites.flight_plan === null) {
+            sprites.flight_plan = grid.addImage(images.flight_plan, 0, 0, map_width,
+                                                map_height);
+        }
+    }
+
+    this.hideFlightPlan = function() {
+        if (sprites.flight_plan !== null) {
+            grid.removeObject(sprites.flight_plan);
+            grid.redraw();
+            sprites.flight_plan = null;
+        }
     }
 
     /*
@@ -617,11 +631,7 @@ function Game(game_map, canvas) {
         // Scroll to the bottom of the log
         $("#right-panel")[0].scrollTop = $("#right-panel")[0].scrollHeight;
 
-        // Remove flight plan
-        if (sprites.flight_plan) {
-            grid.removeObject(sprites.flight_plan);
-            sprites.flight_plan = null;
-        }
+        this.hideFlightPlan();
 
         // Remove city circles
         for (var i=0; i<sprites.click_points.length; i++) {
@@ -751,6 +761,16 @@ function Game(game_map, canvas) {
         return true;
     }
 
+    // Toggle flight plan on button press
+    $("#flight-plan-button").on("click", function() {
+        if (sprites.flight_plan === null) {
+            g.showFlightPlan();
+        }
+        else {
+            g.hideFlightPlan();
+        }
+    });
+
     this.addLabels();
     this.keyboardCheckLoop(0);
 }
@@ -774,7 +794,7 @@ function hidePopup(id) {
  */
 function performAction(action_id) {
     // Hide buttons and show loading gif
-    $("#buttons-bar").children().hide();
+    $("#buttons-bar .actions").children().hide();
     $("#loading-gif").show();
 
     $.ajax(ACTION_URL, {
@@ -853,9 +873,10 @@ function setCanvasSize(canvas) {
     canvas.style.top = top_px + "px";
     canvas.style.left = left_px + "px";
 
-    // Position dice over canvas
+    // Position buttons over canvas
     $("#buttons-bar").css({
         "top": 3 + top_px,
+        "left": 3 + left_px,
         "right": 3 - left_px
     });
 }
