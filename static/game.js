@@ -788,6 +788,17 @@ function hidePopup(id) {
     $("#" + id).hide();
 }
 
+function addToast(message) {
+    var $li = $("<li>").text(message);
+    $("#toast-list").prepend($li);
+
+    window.setTimeout(removeToast, TOAST_TIMEOUT * 1000);
+}
+
+function removeToast() {
+    $("#toast-list li:last-child").remove();
+}
+
 /*
  * Send an AJAX request to perform the specified action. Immediately update
  * status if the request is successful
@@ -874,7 +885,7 @@ function setCanvasSize(canvas) {
     canvas.style.left = left_px + "px";
 
     // Position buttons over canvas
-    $("#buttons-bar").css({
+    $("#buttons-bar, #toast-list").css({
         "top": 3 + top_px,
         "left": 3 + left_px,
         "right": 3 - left_px
@@ -893,6 +904,9 @@ const AIR_LINK = "air";
 
 // The length of the player movement animation in seconds
 const ANIMATION_TIME = 0.7;
+
+// The number of seconds to show toast messages for
+const TOAST_TIMEOUT = 4;
 
 // The different styles of circles at cities
 const LOCATING_MARKER = "locating";
@@ -915,6 +929,7 @@ MARKER_COLOURS.airport = {
 const COLOURS = ["#AA3939", "#226666", "#AA8439"];
 
 const ZOOM_THRESHOLD = 2.2;
+
 
 // Speed in px/sec for scrolling the map with WASD keys
 const SCROLL_SPEED = 600;

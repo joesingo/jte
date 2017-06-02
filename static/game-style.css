@@ -164,7 +164,7 @@ li.visited {
     position: absolute;
     z-index: 50;
 
-    /* top and right are set in JS to be aligned with canvas */
+    /* top, left and right are set in JS to be aligned with canvas */
     top: 0;
     right: 0;
 }
@@ -189,6 +189,28 @@ li.visited {
     background-image: url("/static/plane-icon.png");
     background-position: center;
     background-repeat: no-repeat;
+}
+
+#toast-list {
+    position: absolute;
+    z-index: 45;
+    margin: 0;
+    text-align: center;
+
+    /* top , left and right are set in JS to be aligned with canvas */
+    top: 0;
+}
+
+#toast-list li {
+    list-style: none;
+    background: white;
+    padding: 8px;
+    border: 2px solid black;
+    border-radius: 5px;
+    width: 250px;
+    margin: auto;
+    margin-bottom: 5px;
+    opacity: 0.9;
 }
 
 button {
