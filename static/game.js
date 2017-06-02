@@ -783,6 +783,13 @@ function Game(game_map, canvas) {
         }
     });
 
+    // Reset zoom level and scrolling so map takes up entire canvas
+    $("#fullscreen-button").on("click", function() {
+        var tl = grid.fromCanvasCoords(0, 0);
+        grid.translate(tl[0], tl[1]);
+        grid.zoom(1/zoom_factor - 1, 0, 0);
+    });
+
     this.addLabels();
     this.keyboardCheckLoop(0);
 }

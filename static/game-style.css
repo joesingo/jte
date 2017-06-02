@@ -185,10 +185,17 @@ li.visited {
     float: right;
 }
 
-#flight-plan-button {
-    background-image: url("/static/plane-icon.png");
+#buttons-bar .image-button {
     background-position: center;
     background-repeat: no-repeat;
+}
+
+#flight-plan-button {
+    background-image: url("/static/plane-icon.png");
+}
+
+#fullscreen-button {
+    background-image: url("/static/fullscreen-icon.png");
 }
 
 #toast-list {
