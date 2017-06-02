@@ -54,6 +54,9 @@ function Game(game_map, canvas) {
     // Store an animation queue for each player, indexed by name
     var player_animations = {};
 
+    // Whether it is the user's turn in the game
+    var my_turn = false;
+
     var grid = new Grid(canvas);
 
     grid.settings.background_colour = "black";
@@ -648,11 +651,20 @@ function Game(game_map, canvas) {
         this.drawCards(status);
 
         if ("actions" in status) {
+
+            if (!my_turn) {
+                my_turn = true;
+                addToast("It's your turn");
+            }
+
             this.drawActions(status);
 
             if (status.dice_points) {
                 $("#dice-points").prop("src", `/static/dice/${status.dice_points}.png`).show();
             }
+        }
+        else {
+            my_turn = false;
         }
 
         $("#player-list").text("");
