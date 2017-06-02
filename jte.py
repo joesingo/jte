@@ -112,9 +112,6 @@ class Turn(object):
 class Game(object):
     """An object to represent an actual game"""
 
-    # The number of cards each player is dealt at the start of the game
-    STARTING_CITIES = 9
-
     # Constants to represent the actions players are allowed to perform
     ROLL_DICE_ACTION = "roll_dice"
     TRAVEL_ACTION = "travel"
@@ -136,10 +133,17 @@ class Game(object):
         self.players = []
 
         city_ids = list(range(len(self.game_map["cities"])))
-        deck = CardDeck(city_ids)
 
+        # Seperate cities into the 3 decks
+        # Note: num. of cities should be a multiple of 3 for this to work properly
+        decks = []
+        l = int(len(city_ids) / 3)
+        for i in range(3):
+            decks.append(CardDeck(city_ids[i*l:(i+1)*l]))
+
+        # Deal 3 cards from each deck to each player
         for name in player_names:
-            cities = [deck.deal() for i in range(Game.STARTING_CITIES)]
+            cities = [deck.deal() for i in range(3) for deck in decks]
             p = Player(name, cities, cities[0])
             self.players.append(p)
 
