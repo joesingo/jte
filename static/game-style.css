@@ -26,6 +26,10 @@ h1 {
     width: 80%;   /* Match with #right-panel width */
     height: 90%;  /* Match with h1 height */
     position: relative;
+
+    /* Initially hide so that user does not see buttons etc before they are
+       put in the correct position in JS */
+    visibility: hidden;
 }
 
 #right-panel {
@@ -218,6 +222,11 @@ li.visited {
     margin: auto;
     margin-bottom: 5px;
     opacity: 0.9;
+}
+
+#loading-div {
+    font-size: 2em;
+    text-align: center;
 }
 
 button {

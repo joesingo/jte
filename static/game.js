@@ -677,12 +677,16 @@ function Game(game_map, canvas) {
 
         grid.redraw();
 
-        // Show canvas and set the height of the message log area on the
-        // first update
+        // Perform first time only things
         if ($("#right-panel").is(":hidden")) {
+
+            // Match height of left and right panels
             var h = $("#left-panel").height() - $("#card-list").height();
             $("#right-panel").height(h).show();
-            canvas.style.display = "inline";
+
+            // Remove loading message and show the game
+            $("#loading-div").hide();
+            $("#left-panel").css("visibility", "visible");
         }
 
         $("#loading-gif").hide();
@@ -986,9 +990,6 @@ var map = new Map(cities_str, airports_str);
 var latest_timestamp = 1.1;
 
 var canvas = $("#game-canvas")[0];
-// Hide canvas until first update to avoid seeing things labels before they
-// are hidden etc...
-canvas.style.display = "none";
 
 // Hide right panel where message log appears so that we can tell in the
 // first call to updateDisplay() and set it to be the same height as the
