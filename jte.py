@@ -353,13 +353,10 @@ class Game(object):
                 self.current_turn.dice_points -= 1
 
             elif link["type"] == LinkTypes.SEA.value:
-                self.next_player()
+                end_turn = True
 
             # End turn now if all dice points are used up
-            if self.current_turn.dice_points == 0:
-                self.next_player()
-
-            elif end_turn:
+            if self.current_turn.dice_points == 0 or end_turn:
                 self.next_player()
 
     def get_city_name(self, city_id):
