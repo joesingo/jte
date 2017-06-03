@@ -2,6 +2,7 @@ import os
 import random
 import json
 import time
+import pickle
 
 from flask import Flask, render_template, request, redirect, abort, session
 
@@ -12,15 +13,15 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
 MAX_GAME_ID = 100
-matchmakers = {}
+GAME_FILES_DIRECTORY = "./games"
 
 with open("europe-map.json") as map_file:
-    soton_map = json.load(map_file)
+    europe_map = json.load(map_file)
 
 
 def check_game_exists(game_id):
     """Check if a game with the specifed ID exists"""
-    if game_id not in matchmakers:
+    if str(game_id) not in os.listdir(GAME_FILES_DIRECTORY):
         abort(404)
 
 
@@ -37,7 +38,7 @@ def create_game_post():
     while True:
         game_id = random.randint(1, MAX_GAME_ID)
 
-        if game_id not in matchmakers:
+        if str(game_id) not in os.listdir(GAME_FILES_DIRECTORY):
             break
 
     try:
@@ -45,7 +46,9 @@ def create_game_post():
     except (ValueError, KeyError):
         abort(400)
 
-    matchmakers[game_id] = Matchmaker(players, soton_map)
+    m = Matchmaker(players, europe_map)
+    save_matchmaker(game_id, m)
+
     return redirect("/join/{}/".format(game_id))
 
 
@@ -69,12 +72,15 @@ def joing_game_post(game_id):
 
     name = name[0].upper() + name[1:].lower()
 
+    m = get_matchmaker(game_id)
+
     try:
-        matchmakers[game_id].add_player(name)
+        m.add_player(name)
 
     except (InvalidNameException, GameFullException) as e:
         return e.message, 400
 
+    save_matchmaker(game_id, m)
     session[game_id] = name
 
     return "", 200
@@ -84,7 +90,8 @@ def joing_game_post(game_id):
 def join_game_status(game_id):
     """Return the matchmaking status of the specified game as JSON"""
     check_game_exists(game_id)
-    status = matchmakers[game_id].get_status()
+    m = get_matchmaker(game_id)
+    status = m.get_status()
     return json.dumps(status)
 
 
@@ -98,27 +105,36 @@ def get_username(game_id):
 
     return session[game_id]
 
+def get_matchmaker(game_id):
+    """Unpickle and return the Matchmaker object for the specifed game"""
+    filename = os.path.join(GAME_FILES_DIRECTORY, str(game_id))
+    with open(filename, "rb") as f:
+        m = pickle.load(f)
 
-def get_game(game_id):
-    """Return the Game object for the specifed game"""
-    check_game_exists(game_id)
+    return m
 
-    status = matchmakers[game_id].get_status()
-    if not status["ready"]:
-        abort(403)
 
-    return matchmakers[game_id].game
+def save_matchmaker(game_id, matchmaker):
+    """Pickle the Matchmaker object provided to a file"""
+    filename = os.path.join(GAME_FILES_DIRECTORY, str(game_id))
+    with open(filename, "wb") as f:
+        pickle.dump(matchmaker, f)
 
 
 @app.route("/play/<int:game_id>/")
 def play_game(game_id):
     """Render the page to actually play the game"""
-    game = get_game(game_id)
+    check_game_exists(game_id)
+    m = get_matchmaker(game_id)
+
+    if not m.get_status()["ready"]:
+        abort(403)
+
     username = get_username(game_id)
 
     return render_template("game.html", username=username,
-                           cities=json.dumps(game.game_map["cities"]),
-                           airports=json.dumps(game.game_map["airports"]),
+                           cities=json.dumps(m.game.game_map["cities"]),
+                           airports=json.dumps(m.game.game_map["airports"]),
                            random_num=time.time())
 
 
@@ -126,9 +142,14 @@ def play_game(game_id):
 def get_game_status(game_id, timestamp):
     """Return the game status as JSON. If the latest status for the game is
     not newer than the timestamp provided, return a 204"""
-    game = get_game(game_id)
+    check_game_exists(game_id)
+    m = get_matchmaker(game_id)
+
+    if not m.get_status()["ready"]:
+        abort(403)
+
     username = get_username(game_id)
-    status = game.get_status(username)
+    status = m.game.get_status(username)
 
     if status["timestamp"] > timestamp:
         return json.dumps(status)
@@ -140,7 +161,12 @@ def get_game_status(game_id, timestamp):
 @app.route("/play/<int:game_id>/action/", methods=["POST"])
 def perform_action(game_id):
     """Perform an action in the specified game"""
-    game = get_game(game_id)
+    check_game_exists(game_id)
+    m = get_matchmaker(game_id)
+
+    if not m.get_status()["ready"]:
+        abort(403)
+
     username = get_username(game_id)
 
     try:
@@ -148,7 +174,8 @@ def perform_action(game_id):
     except (KeyError, ValueError):
         abort(400)
 
-    game.perform_action(action_id, username)
+    m.game.perform_action(action_id, username)
+    save_matchmaker(game_id, m)
     return "Success", 200
 
 
