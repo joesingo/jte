@@ -35,6 +35,10 @@ def create_game():
 def create_game_post():
     """Handle a POST request from the create game page to actually create the
     game. Return a redirect to the join page for the newly created game"""
+
+    if len(os.listdir(GAME_FILES_DIRECTORY)) >= MAX_GAME_ID:
+        return "Too many games in progress", 503
+
     while True:
         game_id = random.randint(1, MAX_GAME_ID)
 
