@@ -15,6 +15,9 @@ app.secret_key = os.urandom(24)
 MAX_GAME_ID = 100
 GAME_FILES_DIRECTORY = "./games"
 
+if not os.path.isdir(GAME_FILES_DIRECTORY):
+    os.mkdir(GAME_FILES_DIRECTORY)
+
 with open("europe-map.json") as map_file:
     europe_map = json.load(map_file)
 
@@ -184,4 +187,4 @@ def perform_action(game_id):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True)
+    app.run(host="0.0.0.0", debug=False)

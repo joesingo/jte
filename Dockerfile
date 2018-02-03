@@ -1,11 +1,11 @@
 FROM python:3.4-slim
 
-WORKDIR /jte
+WORKDIR /jte/src
 
 ADD . /jte
 
-RUN pip install --trusted-host pypi.python.org -r requirements.txt
+RUN pip install --trusted-host pypi.python.org -r ../requirements.txt
 
-EXPOSE 80
+EXPOSE 5000
 
 CMD ["python3", "server.py"]
