@@ -346,6 +346,11 @@ function Game(game_map, canvas) {
      */
     this.drawPlayers = function(status) {
 
+        // Ensure there are enough colours defined
+        while (COLOURS.length < status.players.length) {
+            COLOURS.push(getRandomColour());
+        }
+
         for (var i=0; i<status.players.length; i++) {
 
             var $name_span = $("<span>", {"class": "player-name"});
@@ -362,7 +367,7 @@ function Game(game_map, canvas) {
             var $item = $("<li>", {"css": {"background": COLOURS[i]}});
             $item.append($name_span, "<br />", text);
 
-            // Make a list of player'c cities
+            // Make a list of player's cities
             var $city_list = $("<ul>").addClass("opponent-city-list");
             for (var j=0; j<status.players[i].cards.length; j++) {
                 var city_name = map.getCityName(status.players[i].cards[j].id);
@@ -796,6 +801,21 @@ function Game(game_map, canvas) {
 
     this.addLabels();
     this.keyboardCheckLoop(0);
+}
+
+/*
+ * Return a random colour as a hex string
+ */
+function getRandomColour() {
+    var rand_colour = "#";
+
+    for (var j=0; j<6; j++) {
+        var r = Math.floor(Math.random() * 16);
+        // Offset r to get ascii code of the corresponding hex digit;
+        var offset = (r < 10 ? 48 : 55);
+        rand_colour += String.fromCharCode(r + offset);
+    }
+    return rand_colour;
 }
 
 /*
