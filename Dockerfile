@@ -8,4 +8,4 @@ RUN pip install --trusted-host pypi.python.org -r ../requirements.txt
 
 EXPOSE 5000
 
-CMD ["python3", "server.py"]
+CMD ./delete_old.sh & python3 server.py
