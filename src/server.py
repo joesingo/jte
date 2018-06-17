@@ -85,7 +85,7 @@ def joing_game_post(game_id):
         m.add_player(name)
 
     except (InvalidNameException, GameFullException) as e:
-        return e.message, 400
+        return str(e), 400
 
     save_matchmaker(game_id, m)
     session[game_id] = name
