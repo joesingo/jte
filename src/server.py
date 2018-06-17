@@ -71,6 +71,8 @@ def joing_game_post(game_id):
     """Handle a POST request from the join page to actually add the user to the
     game"""
     check_game_exists(game_id)
+    if str(game_id) in session:
+        return "Cannot join game multiple times", 400
 
     try:
         name = request.form["username"]
@@ -83,7 +85,6 @@ def joing_game_post(game_id):
 
     try:
         m.add_player(name)
-
     except (InvalidNameException, GameFullException) as e:
         return str(e), 400
 
