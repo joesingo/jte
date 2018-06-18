@@ -28,6 +28,12 @@ def check_game_exists(game_id):
         abort(404)
 
 
+@app.route("/")
+def home_redirect():
+    """Redirect home page to create game page"""
+    return redirect("/create/")
+
+
 @app.route("/create/")
 def create_game():
     """Render the static page for a user to create a new game"""
