@@ -57,7 +57,7 @@ def create_game_post():
     try:
         players = int(request.form["no_of_players"])
     except (ValueError, KeyError):
-        abort(400)
+        return "Must provide integer value 'no_of_players'", 400
 
     m = Matchmaker(players, europe_map)
     save_matchmaker(game_id, m)
@@ -83,7 +83,10 @@ def joing_game_post(game_id):
     try:
         name = request.form["username"]
     except KeyError:
-        abort(400)
+        return "Must provide 'username'", 400
+
+    if not name:
+        return "Username cannot be blank", 400
 
     name = name[0].upper() + name[1:].lower()
 
@@ -186,7 +189,7 @@ def perform_action(game_id):
     try:
         action_id = int(request.form["action_id"])
     except (KeyError, ValueError):
-        abort(400)
+        return "Must provide integer value 'action_id'", 400
 
     m.game.perform_action(action_id, username)
     save_matchmaker(game_id, m)
