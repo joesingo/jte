@@ -32,3 +32,9 @@ docker run -d -p 5000:5000 jte
 
 The Docker image starts the Flask app on port 5000, and runs a script to
 automatically delete games that have not been updated in over 3 hours.
+
+Improvements
+------------
+
+- See opponents cities on their turn (stars in a different colour)
+- Notification when anyone gets a city
